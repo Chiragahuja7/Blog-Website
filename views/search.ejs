@@ -6,7 +6,7 @@
     <ul class="article-ul">
 <div class="row g-4">
   <% data.forEach(post => { %>
-    <a href="/post/<%= post._id %>" class="col-md-4">
+    <a href="/post/<%= post._id %>" class="col-md-4 text-decoration-none">
       <div class="card h-100 shadow-sm blog-card">
         <% if (post.image) { %>
           <img src="<%= post.image %>" alt="Blog image" 
