@@ -11,7 +11,7 @@ const PostSchema = new Schema({
     required: true
   },
   image: {          
-    type: String
+    type: [String]
   },
   createdAt: {
     type: Date,
@@ -20,7 +20,20 @@ const PostSchema = new Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  status:{
+    type:String,
+    default:"pending"
+  },
+  category:{
+    type:String,
+    default: "uncategorized"
+  },
+  author: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'User',   // assumes your user model is called 'User'
+  required: true
   }
-});
+}); 
 
 module.exports = mongoose.model('Post', PostSchema);

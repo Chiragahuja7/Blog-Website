@@ -1,26 +1,50 @@
 <header class="header">
-    <a href = "/" class="header__logo">nodejs</a>
+    <a href="/" class="header__logo">Blog.io</a>
+    <%- include("../partials/search.ejs")%>
 
     <nav class="header__nav">
         <ul>
-            <li>
-                <a href="/" class="<%isActiveRoute('/',currentRoute)%>" >Home</a>
-            </li>
-            <li>
-                <a href="/about" class="<%isActiveRoute('/about',currentRoute)%>" >About</a>
-            </li>
-            <li>
-                <a href="/contact" class="<%isActiveRoute('/contact',currentRoute)%>" >Contact</a>
+            <li><a href="/" class="">Home</a></li>
+            <li><a href="/about" class="">About</a></li>
+            <li><a href="/contact" class="">Contact</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropbtn">Categories</a>
+              <ul class="dropdown-content">
+                <li><a href="/category/Technology">Technology</a></li>
+                <li><a href="/category/Lifestyle">Lifestyle</a>
+                <li><a href="/category/AI">AI</a></li>
+                <li><a href="/category/Food">Food</a></li>
+                <li><a href="/category/Animal">Animal</a></li>
+                <li><a href="/category/Travel">Travel</a></li>
+              </ul>
             </li>
         </ul>
     </nav>
-    <div class="header__button">
-        <button class="searchBtn" aria-expanded="false">
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.dropbtn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var dropdown = btn.parentElement;
+      dropdown.classList.toggle('open');
+    });
+  });
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('.dropdown').forEach(function(dropdown) {
+      if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('open');
+      }
+    });
+  });
+});
+</script>
+</header>
+<!-- <div class="header__button"> -->
+<!-- <button class="searchBtn" aria-expanded="false">
         Search
       <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M7.79167 13.4583C10.9213 13.4583 13.4583 10.9213 13.4583 7.79167C13.4583 4.66205 10.9213 2.125 7.79167 2.125C4.66205 2.125 2.125 4.66205 2.125 7.79167C2.125 10.9213 4.66205 13.4583 7.79167 13.4583Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M14.875 14.875L11.7938 11.7938" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-        </button>
-    </div>
-</header>
+        </button> -->
+<!-- </div> -->

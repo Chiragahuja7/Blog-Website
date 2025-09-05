@@ -10,12 +10,12 @@
 
 <form action="/edit-post/<%= data._id %>?_method=PUT" method="POST">
 
-  <label for="title"><b>Title</b></label>
-  <input type="text" placeholder="Post Title" name="title" value="<%= data.title %>">
-
-  <label for="body"><b>Content</b></label>
-  <textarea name="body" cols="50" rows="10"><%= data.body %></textarea>
-
+  <label for="status"><b>Status</b>
+    <select name="status">
+      <option value="pending" <%= data.status === 'pending' ? 'selected' : '' %>>Pending</option>
+      <option value="approved" <%= data.status === 'approved' ? 'selected' : '' %>>Approved</option>
+      <option value="rejected" <%= data.status === 'rejected' ? 'selected' : '' %>>Rejected</option>
+    </select>
   <input type="submit" value="Update" class="btn">
 
 </form>

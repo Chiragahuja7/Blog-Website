@@ -36,3 +36,16 @@
 <% } %>
 <p class="article d-flex justify-content-center"><%= data.body %></p>
 
+<hr>
+<ul class="editor-posts">
+        <li>
+        <div class="editor-post-controls">
+        <a href="/editor-edit-post/<%= data._id %>" class="btn">Edit</a>
+
+        <form action="/editor-delete-post/<%= data._id %>?_method=DELETE" method="POST">
+          <input type="submit" value="Delete" class="btn btn-danger ms-2">
+        </form>
+      </div>
+      </li>
+</ul>
+

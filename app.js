@@ -11,6 +11,7 @@ const {isActiveRoute}=require("./server/helpers/routeHelpers")
 const multer = require("multer");
 const path = require("path");
 const Post = require("./server/models/post");
+const stripe=require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 
 const app = express();
@@ -18,21 +19,54 @@ const PORT = 5000 || process.env.PORT;
 
 connectDB();
 
+app.use(session({
+    secret:'keyboard cat',
+    resave:'false',
+    saveUninitialized:true,
+    store:MongoStore.create({
+    mongoUrl:process.env.MONGODB_URI
+    })
+}))
+
 app.use(express.urlencoded({extended:true}));
 app.use(express.json());
 app.use(cookieParser());
 app.use(methodOverride('_method'));
 
+function checkBlogLimit(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).send("You must be logged in to post a blog.");
+  }
+  const User = require('./server/models/User');
+  User.findById(req.session.user._id)
+    .then(user => {
+      if (!user) {
+        return res.status(401).send("User not found.");
+      }
+      if (user.blogsPosted >= user.blogLimit) {
+        return res.send("Blog post limit reached. Please <a href='/checkout'>upgrade your plan to post more blogs.</a>");
+      }
+      req.dbUser = user;
+      next();
+    })
+    .catch(err => {
+      console.error(err);
+      return res.status(500).send("Internal server error.");
+    });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // folder to save images
+    cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // unique name
+    cb(null, Date.now() + path.extname(file.originalname));
   }
-});
+}); 
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage,
+  limits: { fileSize: 2 * 1024 * 1024 }
+});
 
 app.use('/uploads', express.static('uploads'));
 
@@ -40,34 +74,36 @@ app.get("/add-blog",(req,res)=>{
     res.render("form.ejs");
 })
 
-
-app.post("/add-blog", upload.single("image"), async (req, res) => {
+app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) => {
   try {
     const { title, content } = req.body;
-    const imagePath = req.file ? "/uploads/" + req.file.filename : null;
-
+    const imagePaths = req.files ? req.files.map(file => "/uploads/" + file.filename) : [];
+    const user = req.dbUser;
+    if (!user) {
+      return res.status(401).send("User not found.");
+    }
     const newBlog = new Post({
       title,
-      body:content,
-      image: imagePath   // ✅ store image path
+      body: content,
+      image: imagePaths,
+      category: req.body.category,
+      author: user._id
     });
-
     await newBlog.save();
-    res.redirect("/");
+    user.blogsPosted += 1;
+    await user.save();
+    res.redirect("/editor");
   } catch (err) {
     console.error(err);
     res.status(500).send("Error saving blog");
   }
-});
+})
 
-app.use(session({
-    secret:'keyboard cat',
-    resave:'false',
-    saveUninitialized:true,
-    store:MongoStore.create({
-        mongoUrl:process.env.MONGODB_URI
-    })
-}))
+// make user available in all EJS templates
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
 
 app.use(express.static("public"));
 
