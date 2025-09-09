@@ -131,7 +131,7 @@ img {
 .header__button {
   display: flex;
   justify-content: end;
-  grid-area: button;
+  /* grid-area: button; */
 }
 
 .header__button button {
@@ -465,8 +465,8 @@ img {
 }
 
 .btn img {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
 }
 
 /* @media (max-width: 444px) {
@@ -481,6 +481,44 @@ img {
  .btn-primary{
   padding: 5px 10px;
  }
+}
+
+.btn-outline-secondary{
+  border: none;
+  color: rgb(0, 0, 0); 
+  padding: 16px 32px;
+  text-decoration: none;
+  margin: 4px 2px; 
+  cursor: pointer;
+}
+
+.btn-outline-secondary img {
+  width: 30px;
+  height: 30px;
+}
+
+.btn-danger img {
+  margin-right: 10px;
+  width: 30px;
+  height: 30px;
+}
+
+.circle {
+  display: inline-flex;   
+  align-items: center;
+  justify-content: center;
+  width: 90px;           
+  height: 45px;       
+  border-radius: 30%;    
+  background-color: #356e9a;  
+  color: rgb(255, 255, 255);     
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.circle:hover {
+  transform: scale(1.1);      /* little hover effect */
 }
 
   

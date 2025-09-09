@@ -8,12 +8,52 @@
 
 </div>
 
-<form action="/editor-edit-post/<%= data._id %>?_method=PUT" method="POST">
+<form action="/editor-edit-post/<%= data._id %>?_method=PUT" method="POST" enctype="multipart/form-data">
 
   <label for="title"><b>Title</b></label>
   <input type="text" placeholder="Post Title" name="title" value="<%= data.title %>">
 
-  <label for="body"><b>Content</b></label>
-  <textarea name="body" cols="50" rows="10"><%= data.body %></textarea>
+<label for="body"><b>Content</b></label>
+<textarea id="editor" name="body" cols="50" rows="10"><%= data.body %></textarea>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.css">
+<script src="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const editor = new Jodit('#editor', {
+      height: 400,  
+      buttons: [
+        'bold', 'italic', 'underline', '|',
+        'ul', 'ol', '|',
+        'link', 'image'
+      ],
+      uploader: {
+        insertImageAsBase64URI: true 
+      }
+    });
+  });
+</script>
+
+    <% if (data.image) { %>
+    <p>Current Image:</p>
+    <img src="<%= data.image %>" alt="Blog Image" width="200px">
+    <% } %>
+
+  <!-- New image upload -->
+  <label for="image"><b>New Image</b></label>
+  <input type="file" name="image" accept="image/*">
+
+  <label for="category"><b>Category</b></label>
+  <select name="category" id="category">
+    <option value="tech" <%= data.category === "tech" ? "selected" : "" %>>tech</option>
+    <option value="ai" <%= data.category === "ai" ? "selected" : "" %>>AI</option>
+    <option value="lifestyle" <%= data.category === "lifestyle" ? "selected" : "" %>>lifestyle</option>
+    <option value="animal" <%= data.category === "animal" ? "selected" : "" %>>animal</option>
+    <option value="food" <%= data.category === "food" ? "selected" : "" %>>food</option>
+   <option value="travel" <%= data.category === "travel" ? "selected" : "" %>>travel</option>
+  </select>
+
   <input type="submit" value="Update" class="btn">
+
 </form>

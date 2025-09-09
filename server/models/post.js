@@ -31,7 +31,7 @@ const PostSchema = new Schema({
   },
   author: {
   type: mongoose.Schema.Types.ObjectId,
-  ref: 'User',   // assumes your user model is called 'User'
+  ref: 'User',
   required: true
   }
 }); 

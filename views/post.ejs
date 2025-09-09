@@ -34,5 +34,61 @@
     </div>
   <% } %>
 <% } %>
-<p class="article d-flex justify-content-center"><%= data.body %></p>
+<button id="playPauseBtn" class="btn btn-success">▶</button>
+<button id="stopBlog" class="btn btn-danger">⏹</button>
 
+<div id="blogContent" style="display:none;">
+  <%= data.body %>
+</div>
+
+<p class="article d-flex justify-content-center"><%- data.body %></p>
+
+<a href="/download/<%= data._id %>" class="btn-outline-secondary mb-3" title="download">
+  <img src="/icons8-downloading-updates-64.png" alt="Download Icon" style="width:25px; height:25px; margin-right:8px;">
+</a>
+
+<script>
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  const stopBtn = document.getElementById("stopBlog");
+  const blogText = document.getElementById("blogContent").textContent.trim();
+
+  let speech;
+  let isPlaying = false;
+
+  function updateButton() {
+    playPauseBtn.textContent = isPlaying ? "⏸" : "▶";
+  }
+
+  playPauseBtn.addEventListener("click", () => {
+    if (!isPlaying) {
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+      } else {
+        speech = new SpeechSynthesisUtterance(blogText);
+        speech.lang = "en-US";
+        speech.rate = 1;
+        speech.pitch = 1;
+        speechSynthesis.speak(speech);
+
+        speech.onend = () => {
+          isPlaying = false;
+          updateButton();
+        };
+      }
+      isPlaying = true;
+    } else {
+      speechSynthesis.pause();
+      isPlaying = false;
+    }
+    updateButton();
+  });
+
+  stopBtn.addEventListener("click", () => {
+    speechSynthesis.cancel();
+    isPlaying = false;
+    speech = null;
+    updateButton();
+  });
+
+  updateButton();
+</script>

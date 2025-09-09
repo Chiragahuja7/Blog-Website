@@ -6,6 +6,9 @@
   <title>Add-Blog</title>
   <link rel="stylesheet" href="/css/style.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- ✅ Jodit CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.css">
 </head>
 <body class="d-flex align-items-center justify-content-center vh-100">
 
@@ -23,16 +26,16 @@
             </div>
 
             <div class="mb-3">
-                <label for="category" class="form-label">Category</label>
-                <select class="form-select" id="category" name="category" required>
-                  <option value="" disabled selected>Select a category</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Lifestyle">Lifestyle</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Food">Food</option>
-                  <option value="AI">AI</option>
-                  <option value="Animal">Animal</option>
-                </select>
+              <label for="category" class="form-label">Category</label>
+              <select class="form-select" id="category" name="category" required>
+                <option value="" disabled selected>Select a category</option>
+                <option value="technology">technology</option>
+                <option value="lifestyle">lifestyle</option>
+                <option value="travel">travel</option>
+                <option value="food">food</option>
+                <option value="AI">AI</option>
+                <option value="animal">animal</option>
+              </select>
             </div>
 
             <div class="mb-3">
@@ -54,7 +57,31 @@
     </div>
   </div>
   
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- ✅ Jodit JS -->
+  <script src="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const editor = Jodit.make('#content', {
+        height: 400,
+        toolbarAdaptive: false,
+        buttons: [
+          'undo', 'redo', '|',
+          'bold', 'italic', 'underline', '|',
+          'ul', 'ol', '|',
+          'link', 'image'
+        ],
+        uploader: {
+          insertImageAsBase64URI: true
+        }
+      });
+
+      // ✅ Ensure textarea has the editor's value before form submit
+      document.querySelector('form').addEventListener('submit', function () {
+        document.querySelector('#content').value = editor.value;
+      });
+    });
+  </script>
 </body>
 </html>

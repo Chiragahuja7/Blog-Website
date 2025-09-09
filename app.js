@@ -12,10 +12,14 @@ const multer = require("multer");
 const path = require("path");
 const Post = require("./server/models/post");
 const stripe=require("stripe")(process.env.STRIPE_SECRET_KEY);
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
+const cors = require('cors');
 
 
 const app = express();
 const PORT = 5000 || process.env.PORT;
+app.use(cors());
 
 connectDB();
 
@@ -93,6 +97,7 @@ app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) 
     user.blogsPosted += 1;
     await user.save();
     res.redirect("/editor");
+    
   } catch (err) {
     console.error(err);
     res.status(500).send("Error saving blog");

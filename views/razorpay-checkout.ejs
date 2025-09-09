@@ -2,30 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Choose Payment Gateway</title>
+  <title>Razorpay Checkout</title>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
-  <h2>Pay ₹100 (or $1) for 100 blogs</h2>
-
-  <!-- Stripe button -->
-  <form action="/create-stripe-session" method="POST">
-    <button type="submit">Pay with Stripe</button>
-  </form>
-
-  <br>
-
-  <!-- Razorpay button -->
+  <h2>Pay ₹100 for 100 blogs</h2>
   <button id="rzp-button">Pay with Razorpay</button>
 
   <script>
     document.getElementById('rzp-button').onclick = async function (e) {
       e.preventDefault();
 
-      // Get order from backend
+      // Step 1: Get order from backend
       const response = await fetch("/create-razorpay-order", { method: "POST" });
       const order = await response.json();
 
+      // Step 2: Razorpay options
       const options = {
         key: "<%= process.env.RAZORPAY_KEY_ID %>",
         amount: order.amount,
@@ -34,6 +26,7 @@
         description: "Upgrade to premium plan to post more blogs",
         order_id: order.id,
         handler: async function (paymentResponse) {
+          // Step 3: Send payment details to backend for verification
           const verifyRes = await fetch("/razorpay-verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -41,10 +34,18 @@
           });
 
           if (verifyRes.ok) {
-            window.location.href = "/payment-success";
+            // Verified, redirect to success page
+            window.location.href = "/razorpay-success";
           } else {
             alert("Payment verification failed. Please try again.");
           }
+        },
+        prefill: {
+          name: "Your Name",
+          email: "youremail@example.com",
+        },
+        theme: {
+          color: "#3399cc"
         }
       };
 
