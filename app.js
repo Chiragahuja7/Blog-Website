@@ -18,22 +18,23 @@ const cors = require('cors');
 
 
 const app = express();
-const PORT = 5000 || process.env.PORT;
+const PORT = process.env.PORT || 5000;
 app.use(cors());
 
 connectDB();
 
 app.use(session({
-    secret:'keyboard cat',
-    resave:'false',
-    saveUninitialized:true,
-    store:MongoStore.create({
-    mongoUrl:process.env.MONGODB_URI
+    secret: 'keyboard cat',
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGODB_URI
     })
-}))
+}));
 
-app.use(express.urlencoded({extended:true}));
-app.use(express.json());
+// allow larger payloads from rich-text editors (images as base64 or long HTML)
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 app.use(methodOverride('_method'));
 
@@ -69,7 +70,20 @@ const storage = multer.diskStorage({
 }); 
 
 const upload = multer({ storage: storage,
-  limits: { fileSize: 2 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+app.post('/upload', upload.any(), (req, res) => {
+  // multer `any()` accepts files with any field name which is robust for editor uploads
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, message: 'No files uploaded' });
+  }
+  const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+
+  res.json({
+    success: true,
+    files: fileUrls
+  });
 });
 
 app.use('/uploads', express.static('uploads'));

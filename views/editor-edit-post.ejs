@@ -20,20 +20,46 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.css">
 <script src="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.js"></script>
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const editor = new Jodit('#editor', {
-      height: 400,  
-      buttons: [
-        'bold', 'italic', 'underline', '|',
-        'ul', 'ol', '|',
-        'link', 'image'
-      ],
-      uploader: {
-        insertImageAsBase64URI: true 
+document.addEventListener("DOMContentLoaded", function () {
+  const editor = new Jodit('#editor', {
+    height: 400,
+    buttons: [
+      'bold', 'italic', 'underline', '|',
+      'ul', 'ol', '|',
+      'link', 'image'
+    ],
+    uploader: {
+      url: '/upload',
+      insertImageAsBase64URI: false,
+      format: 'json',
+
+      process: function (resp) {
+        if (resp && resp.success && resp.files && resp.files.length) {
+          // Insert all uploaded images into the editor
+          resp.files.forEach(file => {
+            editor.selection.insertHTML(`<img src="${file}" style="max-width:50%; margin:5px 0;">`);
+          });
+
+          // Return first file for Jodit internal tracking
+          return {
+            path: '',
+            error: 0
+          };
+        }
+
+        return { error: 1 };
       }
-    });
+    },
+
+    events: {
+      afterUpload: function (data) {
+        console.log('Jodit uploaded:', data);
+      }
+    }
   });
+});
 </script>
+
 
     <% if (data.image) { %>
     <p>Current Image:</p>

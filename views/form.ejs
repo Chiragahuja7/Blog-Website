@@ -10,7 +10,8 @@
   <!-- ✅ Jodit CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.css">
 </head>
-<body class="d-flex align-items-center justify-content-center vh-100">
+<body class="d-flex align-items-center justify-content-center min-vh-100 py-3">
+
 
   <div class="container">
     <div class="row justify-content-center">
@@ -38,10 +39,10 @@
               </select>
             </div>
 
-            <div class="mb-3">
-              <label for="content" class="form-label">Content</label>
-              <textarea class="form-control" id="content" name="content" rows="5" placeholder="Write your blog..." required></textarea>
-            </div>
+           <textarea id="editor"></textarea>
+           <input type="hidden" id="content" name="content">
+
+
 
             <div class="mb-3">
               <label for="images" class="form-label">Upload Images</label>
@@ -62,26 +63,45 @@
   <script src="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.js"></script>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const editor = Jodit.make('#content', {
-        height: 400,
-        toolbarAdaptive: false,
-        buttons: [
-          'undo', 'redo', '|',
-          'bold', 'italic', 'underline', '|',
-          'ul', 'ol', '|',
-          'link', 'image'
-        ],
-        uploader: {
-          insertImageAsBase64URI: true
+  document.addEventListener("DOMContentLoaded", function () {
+    const editor = new Jodit('#editor', {
+      height: 400,
+      buttons: [
+        'bold', 'italic', 'underline', '|',
+        'ul', 'ol', '|',
+        'link', 'image'
+      ],
+      uploader: {
+        url: '/upload',
+        insertImageAsBase64URI: false,
+        format: 'json',
+        process: function (resp) {
+          if (resp && resp.success && resp.files && resp.files.length) {
+            resp.files.forEach(file => {
+              editor.selection.insertHTML(
+                `<img src="${file}" style="max-width:50%; margin:5px 0;">`
+              );
+            });
+            return { path: '', error: 0 };
+          }
+          return { error: 1 };
         }
-      });
-
-      // ✅ Ensure textarea has the editor's value before form submit
-      document.querySelector('form').addEventListener('submit', function () {
-        document.querySelector('#content').value = editor.value;
-      });
+      }
     });
-  </script>
+
+    // ✅ Force sync content on submit
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function (e) {
+      const hiddenInput = document.querySelector('#content');
+      hiddenInput.value = editor.value;   // get Jodit content
+      // Optional: basic validation to prevent empty submissions
+      if (!hiddenInput.value || hiddenInput.value.trim() === '') {
+        e.preventDefault();
+        alert('Please enter some content for the blog.');
+      }
+    });
+  });
+</script>
+
 </body>
 </html>

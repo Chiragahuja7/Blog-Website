@@ -59,25 +59,44 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jodit/build/jodit.min.js"></script>
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      const editor = Jodit.make('#body', {
-        height: 400,
-        toolbarAdaptive: false,
-        buttons: [
-          'undo', 'redo', '|',
-          'bold', 'italic', 'underline', '|',
-          'ul', 'ol', '|',
-          'link', 'image'
-        ],
-        uploader: {
-          insertImageAsBase64URI: true
-        }
-      });
+document.addEventListener("DOMContentLoaded", function () {
+  const editor = new Jodit('#body', {
+    height: 400,
+    buttons: [
+      'bold', 'italic', 'underline', '|',
+      'ul', 'ol', '|',
+      'link', 'image'
+    ],
+    uploader: {
+      url: '/upload',
+      insertImageAsBase64URI: false,
+      format: 'json',
 
-      document.querySelector('form').addEventListener('submit', function () {
-        document.querySelector('#body').value = editor.value;
-      });
-    });
+      process: function (resp) {
+        if (resp && resp.success && resp.files && resp.files.length) {
+          // Insert all uploaded images into the editor
+          resp.files.forEach(file => {
+            editor.selection.insertHTML(`<img src="${file}" style="max-width:50%; margin:5px 0;">`);
+          });
+
+          // Return first file for Jodit internal tracking
+          return {
+            path: '',
+            error: 0
+          };
+        }
+
+        return { error: 1 };
+      }
+    },
+
+    events: {
+      afterUpload: function (data) {
+        console.log('Jodit uploaded:', data);
+      }
+    }
+  });
+});
   </script>
 
 </body>

@@ -9,6 +9,11 @@ const crypto = require("crypto");
 const multer = require('multer');
 const path = require('path');
 const puppeteer = require('puppeteer');
+const { client } = require("../config/paypal");
+const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
+const striptags = require("striptags");
+const { OrdersCaptureRequest } = checkoutNodeJssdk.orders;
+
 
 router.use(express.static('public'));
 
@@ -22,6 +27,18 @@ const storage = multer.diskStorage({
   }
 }); 
 const upload = multer({ storage: storage });
+ 
+// router.post('/upload', upload.array('files', 10), (req, res) => {
+//   const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+
+//   res.json({
+//     success: true,
+//     files: fileUrls
+//   });
+// });
+
+// router.use('/upload', express.static('uploads'));
+
 
 const adminLayout='../views/layouts/admin';
 const razorpay = new Razorpay({
@@ -34,7 +51,7 @@ router.get("/checkout", (req, res) => {
     currentRoute: '/checkout'
   });
 });
-
+ 
 router.get("/razorpay-checkout", (req, res) => {
   res.render("razorpay-checkout", {
     currentRoute: '/razorpay-checkout'
@@ -74,34 +91,48 @@ router.post("/create-stripe-session", async (req, res) => {
 
 router.get("/payment-success", async (req, res) => {
   try {
-    const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
+    // Stripe flow
+    if (req.query.session_id) {
+      const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
 
-    if (session.payment_status === "paid") {
-      const user = await User.findById(req.session.user._id);
+      if (session.payment_status === "paid") {
+        const user = await User.findById(req.session.user._id);
+        if (!user) return res.status(404).send("User not found");
 
-      if (!user) {
-        return res.status(404).send("User not found");
+        if (!user.processedSessions.includes(session.id)) {
+          user.hasPaid = true;
+          user.blogLimit += 100;
+          user.processedSessions.push(session.id);
+          await user.save();
+        }
+
+        return res.render("success", {
+          message: "Payment successful via Stripe! 🎉"
+        });
       }
-
-      if (!user.processedSessions.includes(session.id)) {
-        user.hasPaid = true;
-        user.blogLimit += 100;
-        user.processedSessions.push(session.id);
-
-        await user.save();
-      }
-
-      res.render("success", {
-        message: "Payment successful! You can now post more blogs."
-      });
-    } else {
-      res.send("Payment not successful. Please try again.");
     }
+
+    // PayPal flow
+    if (req.query.gateway === "paypal") {
+      return res.render("success", {
+        message: "Payment successful via PayPal! 🎉"
+      });
+    }
+
+    // Razorpay flow
+    if (req.query.gateway === "razorpay") {
+      return res.render("success", {
+        message: "Payment successful via Razorpay! 🎉"
+      });
+    }
+    console.log(req.query.gateway);
+    return res.status(400).send("Invalid payment success callback");
   } catch (err) {
     console.error(err);
     res.status(500).send("Something went wrong");
   }
 });
+
 
 
 router.post("/create-razorpay-order", async (req, res) => {
@@ -111,8 +142,8 @@ router.post("/create-razorpay-order", async (req, res) => {
       currency: "INR",
       receipt: "rcpt_" + Date.now()
     };
-    const order = await razorpay.orders.create(options);
-    res.json({ orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID });
+  const order = await razorpay.orders.create(options);
+  res.json({ id: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID });
   } catch (err) {
     console.error(err);
     res.status(500).send("Something went wrong");
@@ -147,15 +178,73 @@ router.post("/razorpay-verify", async (req, res) => {
   }
 });
 
-router.get("/razorpay-success", (req, res) => {
-  res.render("success", {
-    message: "Payment successful via Razorpay! You can now post more blogs."
-  });
-});
+// router.get("/razorpay-success", (req, res) => {
+//   res.render("success", {
+//     message: "Payment successful via Razorpay! You can now post more blogs."
+//   });
+// });
 
 router.get("/cancel", (req, res) => {
   res.render("cancel");
 });
+
+router.get("/create-paypal-order", (req, res) => {
+  res.render("checkout", {
+    currentRoute: '/create-paypal-order'
+  });
+});
+
+
+router.post("/create-paypal-order", async (req, res) => {
+  try {
+    const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "USD",
+            value: "100.00"
+          }
+        }
+      ]
+    });
+    const order = await client().execute(request);
+    res.json({ id: order.result.id });
+  } catch (err) {
+    console.error("Error creating PayPal order:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+ 
+router.post("/capture-paypal-order", async (req, res) => {
+  const { orderID } = req.body;
+  try {
+    const request = new OrdersCaptureRequest(orderID);
+    request.requestBody({});
+    const response = await client().execute(request);
+    if (response.result.status === "COMPLETED") {
+      const user = await User.findById(req.session.user._id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      // Prevent duplicate credits
+      if (!user.processedSessions.includes(orderID)) {
+        user.hasPaid = true;
+        user.blogLimit += 100;
+        user.processedSessions.push(orderID);
+        await user.save();
+      }
+      // Return status for frontend to check
+      return res.json({ status: "COMPLETED", orderID: response.result.id });
+    }
+    res.status(400).json({ status: response.result.status, message: "Payment not completed" });
+  } catch (err) {
+    console.error("Error capturing PayPal order:", err);
+    res.status(500).json({ status: "ERROR", error: err.message });
+  }
+});
+
+
 
 
 router.get('', async (req, res) => {
@@ -166,21 +255,25 @@ router.get('', async (req, res) => {
     }
 
     let perPage = 6;
-    let page = req.query.page || 1;
+    let page = parseInt(req.query.page) || 1;
 
     const data = await Post.aggregate([ { $sort: { createdAt: -1 } } ])
     .skip(perPage * page - perPage)
     .limit(perPage)
     .exec();
     const count = await Post.countDocuments({});
-    const nextPage = parseInt(page) + 1;
-    const hasNextPage = nextPage <= Math.ceil(count / perPage);
+    // const nextPage = parseInt(page) + 1;
+    const totalPages = Math.ceil(count / perPage);
+    const nextPage = page < totalPages ? page + 1 : null;
+    const prevPage = page > 1 ? page - 1 : null;  
 
-    res.render('index', { 
+    res.render('index', {
       locals,
       data,
       current: page,
-      nextPage: hasNextPage ? nextPage : null,
+      nextPage,
+      prevPage,
+      totalPages,
       currentRoute: '/'
     });
 
@@ -189,6 +282,39 @@ router.get('', async (req, res) => {
   }
 
 });
+
+
+// router.get('/editor', async (req, res) => {
+//   try {
+//     const locals = {
+//       title: "NodeJs Blog",
+//       description: "Simple Blog created with NodeJs, Express & MongoDb."
+//     }
+
+//     let perPage = 6;
+//     let page = req.query.page || 1;
+
+//     const data = await Post.aggregate([ { $sort: { createdAt: -1 } } ])
+//     .skip(perPage * page - perPage)
+//     .limit(perPage)
+//     .exec();
+//     const count = await Post.countDocuments({});
+//     const nextPage = parseInt(page) + 1;
+//     const hasNextPage = nextPage <= Math.ceil(count / perPage);
+
+//     res.render('editor', { 
+//       locals,
+//       data,
+//       current: page,
+//       nextPage: hasNextPage ? nextPage : null,
+//       currentRoute: '/editor'
+//     });
+
+//   } catch (error) {
+//     console.log(error);
+//   }
+
+// });
 
 
 router.get('/post/:id', async (req, res) => {
@@ -201,10 +327,12 @@ router.get('/post/:id', async (req, res) => {
       title: data.title,
       description: "Simple Blog created with NodeJs, Express & MongoDb.",
     }
+    const plainText = striptags(data.body);
 
     res.render('post', { 
       locals,
       data,
+      blogText: plainText,
       currentRoute: `/post/${slug}`
     });
   } catch (error) {
@@ -391,11 +519,26 @@ router.get('/editor', async (req, res) => {
     if (!req.session.user) {
       return res.redirect('/login');
     }
+
     const userId = req.session.user._id;
-    const posts = await Post.find({ author: userId });
+    const perPage = 6;
+    const page = parseInt(req.query.page) || 1;
+
+    const posts = await Post.find({ author: userId })
+      .sort({ createdAt: -1 })
+      .skip(perPage * page - perPage)
+      .limit(perPage)
+      .exec();
+
+    const count = await Post.countDocuments({ author: userId });
+    const nextPage = parseInt(page) + 1;
+    const hasNextPage = nextPage <= Math.ceil(count / perPage);
+
     res.render('editor', {
       data: posts,
-      nextPage: null 
+      current: page,
+      nextPage: hasNextPage ? nextPage : null,
+      currentRoute: '/editor'
     });
   } catch (error) {
     console.error(error);
