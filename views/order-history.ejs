@@ -1,0 +1,25 @@
+<h2>Order History</h2>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Gateway</th>
+      <th>Order ID</th>
+      <th>Amount</th>
+      <th>Currency</th>
+      <th>Status</th>
+      <th>Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% orders.forEach(order => { %>
+      <tr>
+        <td><%= order.gateway %></td>
+        <td><%= order.orderId %></td>
+        <td><%= (order.amount / 100).toFixed(2) %></td>
+        <td><%= order.currency %></td>
+        <td><%= order.status %></td>
+        <td><%= order.createdAt.toDateString() %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
