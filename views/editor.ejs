@@ -6,10 +6,26 @@
     <title>Document</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">    
+  <script src="https://kit.fontawesome.com/edaf3a0e34.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <h1>Your Space</h1>
-    <a href="/add-blog" class="btn fs-4 btn-primary">+</a>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="fw-bold">Your Space</h1>
+  
+  <div class="d-flex gap-3">
+    <a href="/add-blog" 
+       class="btn btn-success rounded-circle shadow-lg d-flex align-items-center justify-content-center add-btn"
+       title="Add Blog">
+      <span class="fs-3 fw-bold">+</span>
+    </a>
+
+    <a href="/order-history" 
+       class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center history-btn"
+       title="Order History">
+      <i class="fas fa-history fs-4"></i>
+    </a>
+  </div>
+</div>
 <section class="articles container my-4">
     <div class="row g-4">
     <% data.forEach(post => { %>

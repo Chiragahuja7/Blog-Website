@@ -518,7 +518,32 @@ img {
 }
 
 .circle:hover {
-  transform: scale(1.1);      /* little hover effect */
+  transform: scale(1.1);  
+}
+
+.add-btn, .history-btn {
+  width: 50px;
+  height: 50px;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #d97b48, #f2b38a);
+  color: white;
+}
+.add-btn:hover {
+  background: linear-gradient(135deg, #bf6538, #e89a70);
+  transform: scale(1.08);
+}
+
+.history-btn {
+  background: linear-gradient(135deg, #455a64, #90a4ae);
+  color: white;
+}
+.history-btn:hover {
+  background: linear-gradient(135deg, #37474f, #78909c);
+  transform: scale(1.08);
 }
 
   

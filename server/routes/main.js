@@ -54,13 +54,8 @@ router.get("/checkout", (req, res) => {
   });
 });
  
-// router.get("/razorpay-checkout", (req, res) => {
-//   res.render("razorpay-checkout", {
-//     currentRoute: '/razorpay-checkout'
-//   });
-// });
 
-
+//stripe
 router.post("/create-stripe-session", async (req, res) => {
   try {
   const session = await stripe.checkout.sessions.create({
@@ -105,6 +100,13 @@ router.all("/payment-success", async (req, res) => {
           user.hasPaid = true;
           user.blogLimit += 100;
           user.processedSessions.push(session.id);
+          user.orders.push({
+            gateway: "stripe",
+            orderId: session.id,
+            amount: session.amount_total,
+            currency: session.currency.toUpperCase(),
+            status: "SUCCESS"
+          });
           await user.save();
         }
 
@@ -161,6 +163,13 @@ router.all("/payment-success", async (req, res) => {
         user.hasPaid = true;
         user.blogLimit += 100;
         user.processedSessions.push(txnId);
+        user.orders.push({
+          gateway: "phonepe",
+          orderId: txnId,
+          amount: 930000, 
+          currency: "INR",
+          status: "SUCCESS"
+        });
         await user.save();
       }
 
@@ -177,7 +186,7 @@ router.all("/payment-success", async (req, res) => {
 });
 
 
-
+//razorpay
 router.post("/create-razorpay-order", async (req, res) => {
   try {
     const options = {
@@ -192,7 +201,7 @@ router.post("/create-razorpay-order", async (req, res) => {
     res.status(500).send("Something went wrong");
   }
 });
-
+ 
 router.post("/razorpay-verify", async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
@@ -209,6 +218,14 @@ router.post("/razorpay-verify", async (req, res) => {
 
       user.hasPaid = true;
       user.blogLimit += 100;
+      user.processedSessions.push(razorpay_payment_id);
+      user.orders.push({
+      gateway: "razorpay",
+      orderId: razorpay_payment_id,
+      amount: 930000,
+      currency: "INR",
+      status: "SUCCESS"
+      });
       await user.save();
 
       return res.json({ success: true });
@@ -220,7 +237,7 @@ router.post("/razorpay-verify", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
+ 
 // router.get("/razorpay-success", (req, res) => {
 //   res.render("success", {
 //     message: "Payment successful via Razorpay! You can now post more blogs."
@@ -231,6 +248,8 @@ router.get("/cancel", (req, res) => {
   res.render("cancel");
 });
 
+
+//paypal
 router.get("/create-paypal-order", (req, res) => {
   res.render("checkout", {
     currentRoute: '/create-paypal-order'
@@ -274,6 +293,15 @@ router.post("/capture-paypal-order", async (req, res) => {
         user.hasPaid = true;
         user.blogLimit += 100;
         user.processedSessions.push(orderID);
+
+        user.orders.push({
+        gateway: "paypal",
+        orderId: orderID,
+        amount: 10000,     
+        currency: "USD",
+        status: "SUCCESS"
+      });
+
         await user.save();
       }
       return res.json({ status: "COMPLETED", orderID: response.result.id });
@@ -285,6 +313,8 @@ router.post("/capture-paypal-order", async (req, res) => {
   }
 });
 
+
+//paypal
 const PHONEPE_BASE_URL = process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID;
 const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY;
@@ -339,6 +369,16 @@ router.post("/payment-callback", async (req, res) => {
   res.sendStatus(200);
 }); 
 
+router.get("/order-history", async (req, res) => {
+  if (!req.session.user) return res.redirect("/login");
+
+  const user = await User.findById(req.session.user._id).lean();
+  if (!user) return res.status(404).send("User not found");
+
+  res.render("order-history", {
+    orders: user.orders || [],
+  });
+}); 
 
 router.get('', async (req, res) => {
   try {
@@ -592,13 +632,15 @@ router.get("/category/:category", async (req, res)=>{
       .exec();
     console.log('Fetched posts:', data);
     const count = await Post.countDocuments({ category: category });
-    const nextPage = parseInt(page) + 1;
-    const hasNextPage = nextPage <= Math.ceil(count / perPage);
+    const totalPages = Math.ceil(count / perPage);
+    const nextPage = page < totalPages ? page + 1 : null;
+    const prevPage = page > 1 ? page - 1 : null;  
     res.render('index', {
       locals,
       data,
       current: page,
-      nextPage: hasNextPage ? nextPage : null,
+      nextPage,
+      prevPage,
       currentRoute: `/category/${category}`
     });
   } catch (error) { 
