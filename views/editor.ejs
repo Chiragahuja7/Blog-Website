@@ -41,13 +41,19 @@
       </div>
     <% }) %>
   </div>
-  <% if (nextPage !== null) { %>
-    <div class="text-center mt-4">
-      <a href="/editor/?page=<%= nextPage %>" class="btn btn-outline-secondary">
-        &lt; View Older Posts
-      </a>
-    </div>
+ <div class="text-center mt-4">
+  <% if (prevPage !== null) { %>
+    <a href="/editor/?page=<%= prevPage %>" class="btn btn-primary me-2">
+      &lt; Newer Posts
+    </a>
   <% } %>
+
+  <% if (nextPage !== null) { %>
+    <a href="/editor/?page=<%= nextPage %>" class="btn btn-primary">
+      Older Posts &gt;
+    </a>
+  <% } %>
+</div>
 </section>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>

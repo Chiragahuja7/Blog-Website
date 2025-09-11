@@ -69,9 +69,12 @@
 
     <!-- Razorpay button -->
     <button id="rzp-button" class="btn btn-primary btn-custom">💰 Pay with Razorpay</button>
+    <button id="phonepePay" class="btn btn-primary btn-custom">💰 Pay with PhonePe</button>
 
     <!-- PayPal button -->
     <div id="paypal-button-container"></div>
+
+    <!-- <button id="phonepePay">Pay with PhonePe</button> -->
 
     <div class="text-center mt-3">
       <a href="/" class="text-decoration-none">⬅ Go back to Home</a>
@@ -154,6 +157,16 @@
     }
   }).render("#paypal-button-container");
 
+      // ============ PhonePe ============
+  document.getElementById("phonepePay").addEventListener("click", async () => {
+  const res = await fetch("/create-phonepe-order", { method: "POST" });
+  const data = await res.json();
+  if (data.url) {
+    window.location.href = data.url;
+  } else {
+    alert("Error creating PhonePe order");
+  }
+  });
   </script>
 
 </body>

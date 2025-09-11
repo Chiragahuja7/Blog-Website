@@ -13,6 +13,8 @@ const { client } = require("../config/paypal");
 const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
 const striptags = require("striptags");
 const { OrdersCaptureRequest } = checkoutNodeJssdk.orders;
+const axios = require('axios');
+
 
 
 router.use(express.static('public'));
@@ -52,11 +54,11 @@ router.get("/checkout", (req, res) => {
   });
 });
  
-router.get("/razorpay-checkout", (req, res) => {
-  res.render("razorpay-checkout", {
-    currentRoute: '/razorpay-checkout'
-  });
-});
+// router.get("/razorpay-checkout", (req, res) => {
+//   res.render("razorpay-checkout", {
+//     currentRoute: '/razorpay-checkout'
+//   });
+// });
 
 
 router.post("/create-stripe-session", async (req, res) => {
@@ -89,7 +91,7 @@ router.post("/create-stripe-session", async (req, res) => {
 });
 
 
-router.get("/payment-success", async (req, res) => {
+router.all("/payment-success", async (req, res) => {
   try {
     // Stripe flow
     if (req.query.session_id) {
@@ -123,6 +125,47 @@ router.get("/payment-success", async (req, res) => {
     if (req.query.gateway === "razorpay") {
       return res.render("success", {
         message: "Payment successful via Razorpay! 🎉"
+      });
+    }
+    // PhonePe flow
+    if (req.query.gateway === "phonepe") {
+      const userId = req.session?.user?._id || req.query.userId;
+
+      if (!userId || userId === 'guest') {
+        return res.render("success", {
+          message: "Payment successful via PhonePe! 🎉"
+        });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).send("User not found");
+
+      if (!req.session.user) {
+        req.session.user = {
+          _id: user._id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email
+        };
+
+        await new Promise((resolve, reject) => {
+          req.session.save(err => err ? reject(err) : resolve());
+        });
+      }
+
+      const txnId = req.query.transactionId || "phonepe_" + Date.now();
+
+      if (!Array.isArray(user.processedSessions)) user.processedSessions = [];
+
+      if (!user.processedSessions.includes(txnId)) {
+        user.hasPaid = true;
+        user.blogLimit += 100;
+        user.processedSessions.push(txnId);
+        await user.save();
+      }
+
+      return res.render("success", {
+        message: "Payment successful via PhonePe! 🎉"
       });
     }
     console.log(req.query.gateway);
@@ -227,14 +270,12 @@ router.post("/capture-paypal-order", async (req, res) => {
     if (response.result.status === "COMPLETED") {
       const user = await User.findById(req.session.user._id);
       if (!user) return res.status(404).json({ message: "User not found" });
-      // Prevent duplicate credits
       if (!user.processedSessions.includes(orderID)) {
         user.hasPaid = true;
         user.blogLimit += 100;
         user.processedSessions.push(orderID);
         await user.save();
       }
-      // Return status for frontend to check
       return res.json({ status: "COMPLETED", orderID: response.result.id });
     }
     res.status(400).json({ status: response.result.status, message: "Payment not completed" });
@@ -244,7 +285,59 @@ router.post("/capture-paypal-order", async (req, res) => {
   }
 });
 
+const PHONEPE_BASE_URL = process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
+const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID;
+const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY;
+const PHONEPE_SALT_INDEX = process.env.PHONEPE_SALT_INDEX || 1;
 
+router.post("/create-phonepe-order", async (req, res) => {
+  try {
+    const merchantTransactionId = "TXN_" + Date.now();
+    const amount = 930000;
+
+    const payload = {
+      merchantId: PHONEPE_MERCHANT_ID,
+      merchantTransactionId,
+      merchantUserId: req.session.user?._id || "guest",
+      amount,
+      redirectUrl: `http://localhost:5000/payment-success?gateway=phonepe&userId=${req.session.user?._id}`,
+      redirectMode: "GET",
+      callbackUrl: "http://localhost:5000/payment-callback",
+      paymentInstrument: { type: "PAY_PAGE" }
+    };
+
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString("base64");
+
+    const checksum = crypto
+      .createHash("sha256")
+      .update(base64Payload + "/pg/v1/pay" + PHONEPE_SALT_KEY)
+      .digest("hex") + "###" + PHONEPE_SALT_INDEX;
+
+    const response = await axios.post(
+      `${PHONEPE_BASE_URL}/pg/v1/pay`,
+      { request: base64Payload },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-VERIFY": checksum,
+          "X-MERCHANT-ID": PHONEPE_MERCHANT_ID
+        }
+      }
+    );
+
+    const redirectUrl = response.data?.data?.instrumentResponse?.redirectInfo?.url;
+    res.json({ url: redirectUrl });
+
+  } catch (err) {
+    console.error("PhonePe Order Error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Something went wrong with PhonePe order" });
+  }
+});
+
+router.post("/payment-callback", async (req, res) => {
+  console.log("PhonePe Callback:", req.body);
+  res.sendStatus(200);
+}); 
 
 
 router.get('', async (req, res) => {
@@ -531,14 +624,20 @@ router.get('/editor', async (req, res) => {
       .exec();
 
     const count = await Post.countDocuments({ author: userId });
-    const nextPage = parseInt(page) + 1;
-    const hasNextPage = nextPage <= Math.ceil(count / perPage);
+        const totalPages = Math.ceil(count / perPage);
+        const nextPage = page < totalPages ? page + 1 : null;
+        const prevPage = page > 1 ? page - 1 : null;  
+
+    // const nextPage = parseInt(page) + 1;
+    // const hasNextPage = nextPage <= Math.ceil(count / perPage);
 
     res.render('editor', {
       data: posts,
       current: page,
-      nextPage: hasNextPage ? nextPage : null,
-      currentRoute: '/editor'
+      nextPage,
+      prevPage,
+      totalPages,
+      currentRoute: '/'
     });
   } catch (error) {
     console.error(error);

@@ -42,7 +42,17 @@ const UserSchema = new Schema({
   processedSessions: {
   type: [String],
   default: []
-  }
+  },
+  orders: [
+    {
+      gateway: String,      
+      orderId: String,          
+      amount: Number,           
+      currency: String,         
+      status: String,            
+      createdAt: { type: Date, default: Date.now }
+    }
+  ]
 });
 
 module.exports = mongoose.model('User', UserSchema);
