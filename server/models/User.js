@@ -53,10 +53,14 @@ const UserSchema = new Schema({
       status: String,            
       createdAt: { type: Date, default: Date.now }
     }
-  ]
+  ],
+  isBlocked:{
+    type:Boolean,
+    default:false
+  },
+  hasProAccess:{
+    type:Boolean,
+    default:false
+  }
 });
-  // status:{
-  //   type:String,
-  //   default:"pending"
-  // },
 module.exports = mongoose.model('User', UserSchema);

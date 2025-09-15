@@ -49,7 +49,15 @@ function checkBlogLimit(req, res, next) {
         return res.status(401).send("User not found.");
       }
       if (user.blogsPosted >= user.blogLimit) {
-        return res.send("Blog post limit reached. Please <a href='/checkout'>upgrade your plan to post more blogs.</a>");
+       return res.render("editor.ejs", { 
+       data: [],
+       current: 1,
+       nextPage: null,
+       prevPage: null,
+       totalPages: 1,
+       error: "Blog post limit reached. Please upgrade your plan to post more blogs.",
+       upgradeLink: "/checkout"
+       });
       }
       req.dbUser = user;
       next();

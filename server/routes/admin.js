@@ -113,7 +113,12 @@ const authMiddleware = async (req, res, next) => {
 //   }
 // });
 
- 
+router.get("/admin-dashboard",authMiddleware ,(req,res)=>{
+  res.render("admin-dashboard",{
+    layout:adminLayout
+  });
+});
+
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     const locals = {
@@ -128,10 +133,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       data,
       layout: adminLayout
     });
-  }else{
-    res.redirect('/editor-dashboard');
   }
-
   } catch (error) {
     console.log(error);
   }
@@ -241,6 +243,67 @@ router.get("/logout", (req, res) => {
     if (err) console.error("Session destroy error:", err);
     return res.redirect("/");
   });
+});
+
+
+//Block and Unblock Users
+router.get("/manage-editor",authMiddleware,async(req,res)=>{
+  try{
+    const data=await User.find().lean();
+    res.render("admin/manage-editor",{data,layout:adminLayout});
+  }catch(error){
+    console.log(error);
+    res.status(500).send("Error fetching users");
+  }});
+
+router.get("/manage-reader",authMiddleware,async(req,res)=>{
+  try{
+    const data=await User.find().lean();
+    res.render("admin/manage-reader",{data,layout:adminLayout});
+  }catch(error){
+    console.log(error);
+    res.status(500).send("Error fetching users");
+  }});
+
+ 
+router.post("/block-editor/:id",authMiddleware,async(req,res)=>{
+  try{
+    await User.findByIdAndUpdate(req.params.id,{isBlocked:true});
+    res.redirect("/manage-editor");
+  }catch(error){
+    console.log(error);
+    res.status(500).send("Error blocking user");
+  }
+});
+
+router.post("/unblock-editor/:id",authMiddleware,async(req,res)=>{
+  try{
+    await User.findByIdAndUpdate(req.params.id,{isBlocked:false});
+    res.redirect("/manage-editor");
+  }catch(error){ 
+    console.log(error);
+    res.status(500).send("Error blocking user");
+  }
+});
+
+router.post("/block-reader/:id",authMiddleware,async(req,res)=>{
+  try{
+    await User.findByIdAndUpdate(req.params.id,{isBlocked:true});
+    res.redirect("/manage-reader");
+  }catch(error){
+    console.log(error);
+    res.status(500).send("Error blocking user");
+  }
+});
+
+router.post("/unblock-reader/:id",authMiddleware,async(req,res)=>{
+  try{
+    await User.findByIdAndUpdate(req.params.id,{isBlocked:false});
+    res.redirect("/manage-reader");
+  }catch(error){ 
+    console.log(error);
+    res.status(500).send("Error blocking user");
+  }
 });
 
 module.exports=router;

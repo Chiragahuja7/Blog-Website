@@ -6,15 +6,15 @@
     <title>edit profile</title>
 </head>
 <body>
-    <form action="/edit-profile" method="POST">
+    <form action="/edit-profile" class="Signup" method="POST">
         <label for="firstname"><b>First Name</b></label>
-        <input type="text" placeholder="First Name" name="firstname" style="width:40%;" value="<%= user.firstname %>" required>
+        <input type="text" placeholder="First Name" name="firstname" value="<%= user.firstname %>" required>
 
         <label for="lastname"><b>Last Name</b></label>
-        <input type="text" placeholder="Last Name" name="lastname"style="width:40%;" value="<%= user.lastname %>" required>
+        <input type="text" placeholder="Last Name" name="lastname" value="<%= user.lastname %>" required>
 
         <label for="email"><b>Email</b></label>
-        <input type="email" placeholder="Email" name="email"style="width:40%;" value="<%= user.email %>" required>
+        <input type="email" placeholder="Email" name="email" value="<%= user.email %>" required>
 
         <input type="submit" value="Update Profile" class="btn">
 </body>

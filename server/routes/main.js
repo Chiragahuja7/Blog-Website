@@ -17,6 +17,7 @@ const axios = require('axios');
 const jwt =require("jsonwebtoken");
 
 router.use(express.static('public'));
+const editorLayout='../views/layouts/editor-layout';
 
 const storage = multer.diskStorage({
   destination: function(req, file, cb){
@@ -40,7 +41,15 @@ const upload = multer({ storage: storage });
 
 // router.use('/upload', express.static('uploads'));
 
- 
+function checkBlocked(req, res, next) {
+  if (req.user && req.user.isBlocked) {
+    return res.status(403).send('Your account has been blocked. Contact admin.');
+  }
+  next();
+}
+
+router.use(checkBlocked);
+
 const adminLayout='../views/layouts/admin';
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -388,12 +397,14 @@ router.get('', async (req, res) => {
 
     let perPage = 6;
     let page = parseInt(req.query.page) || 1;
+    const data = await Post.find({ status: "approved" })
+      .sort({ createdAt: -1 })
+      .skip(perPage * page - perPage)
+      .limit(perPage)
+      .exec();
 
-    const data = await Post.aggregate([ { $sort: { createdAt: -1 } } ])
-    .skip(perPage * page - perPage)
-    .limit(perPage)
-    .exec();
-    const count = await Post.countDocuments({});
+    const count = await Post.countDocuments({ status: "approved" });
+
     // const nextPage = parseInt(page) + 1;
     const totalPages = Math.ceil(count / perPage);
     const nextPage = page < totalPages ? page + 1 : null;
@@ -597,6 +608,7 @@ router.post("/signup", async (req, res) => {
         email: user.email,
         userType: userType || "reader"
       };
+      res.redirect("/login");
     } catch (error) {
       if (error.code === 11000) {
         return res.status(409).json({ message: 'Username or Email already in use' });
@@ -622,6 +634,9 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
     if (!user || !user.password) {
       return res.status(401).render("login.ejs", { error: "Invalid email or password" });
+    }
+    if (user.isBlocked) {
+      return res.status(403).render("login.ejs", { error: "Your account has been blocked. Contact admin." });
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -806,12 +821,12 @@ router.get('/download/:id', async (req, res)=>{
 }); 
 
 router.get("/editor-dashboard", (req, res)=>{
-  res.render("editor-dashboard");
+  res.render("editor-dashboard",{
+    layout:editorLayout
+  });
 });
 
-router.get("/admin-dashboard",(req,res)=>{
-  res.render("admin-dashboard");
-})
+
 
 router.get("/settings",(req,res)=>{
   res.render("settings");
