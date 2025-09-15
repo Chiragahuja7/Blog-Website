@@ -23,10 +23,11 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false
   },
-  // status:{
-  //   type:String,
-  //   default:"pending"
-  // },
+  userType:{
+    type:String,
+    enum:["reader","editor"],
+    default:"reader"
+  },
   blogLimit:{
     type:Number,
     default:5
@@ -54,5 +55,8 @@ const UserSchema = new Schema({
     }
   ]
 });
-
+  // status:{
+  //   type:String,
+  //   default:"pending"
+  // },
 module.exports = mongoose.model('User', UserSchema);

@@ -5,8 +5,8 @@ const connectDB = async () => {
     mongoose.set("strictQuery", false);
 
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
       ssl: true,  
       tls: true,   
       serverSelectionTimeoutMS: 5000, 

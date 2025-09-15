@@ -14,8 +14,7 @@ const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
 const striptags = require("striptags");
 const { OrdersCaptureRequest } = checkoutNodeJssdk.orders;
 const axios = require('axios');
-
-
+const jwt =require("jsonwebtoken");
 
 router.use(express.static('public'));
 
@@ -41,7 +40,7 @@ const upload = multer({ storage: storage });
 
 // router.use('/upload', express.static('uploads'));
 
-
+ 
 const adminLayout='../views/layouts/admin';
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -538,23 +537,66 @@ router.get("/contact",(req,res)=>{
   });
 });
 
+router.get("/profile",async (req,res)=>{
+    if(!req.session.user){
+    return res.redirect("/login");
+  }
+const user = await User.findById(req.session.user._id)
+  .select("firstname lastname email userType blogLimit blogsPosted")
+  .lean();
+  res.render("profile.ejs",{user});
+});
+
+router.get("/edit-profile",async (req,res)=>{
+  if(!req.session.user){
+    return res.redirect("/login");
+  }
+  const user = await User.findById(req.session.user._id)
+    .select("firstname lastname email userType blogLimit blogsPosted")
+    .lean();
+  res.render("edit-profile.ejs",{user});
+});
+
+router.post("/edit-profile", async (req, res) => {
+  try {
+    const { firstname, lastname, email } = req.body;
+    const updatedUser = await User.findByIdAndUpdate(
+      req.session.user._id,
+      { firstname, lastname, email },
+      { new: true, runValidators: true }
+    );
+    req.session.user = updatedUser;
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        return res.status(500).send("Profile update failed, try again.");
+      }
+      res.redirect("/profile");
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+
 router.get("/signup",(req,res)=>{
-  res.render("signup.ejs");
+  res.render("signup.ejs" , data={});
 });
 
 router.post("/signup", async (req, res) => {
   try {
-    const { firstname, lastname, email, password } = req.body;
+    const { firstname, lastname, email, password ,userType} = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
-      const user = await User.create({ firstname, lastname, email, password: hashedPassword });
+      const user = await User.create({ firstname, lastname, email, password: hashedPassword,userType });
       req.session.user = {
         _id: user._id,
         firstname: user.firstname,
         lastname: user.lastname,
-        email: user.email
+        email: user.email,
+        userType: userType || "reader"
       };
-      res.redirect('/');
     } catch (error) {
       if (error.code === 11000) {
         return res.status(409).json({ message: 'Username or Email already in use' });
@@ -572,6 +614,7 @@ router.get("/login",(req,res)=>{
   res.render("login.ejs");
 });
 
+const jwtSecret=process.env.JWT_SECRET;
 
 router.post("/login", async (req, res) => {
   try {
@@ -580,11 +623,13 @@ router.post("/login", async (req, res) => {
     if (!user || !user.password) {
       return res.status(401).render("login.ejs", { error: "Invalid email or password" });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(401).render("login.ejs", { error: "Invalid email or password" });
     }
+    const token = jwt.sign({ userId: user._id}, jwtSecret );
+    res.cookie('token', token, { httpOnly: true });
+      
     req.session.user = {
       _id: user._id,
       firstname: user.firstname,
@@ -597,24 +642,29 @@ router.post("/login", async (req, res) => {
         console.error("Session save error:", err);
         return res.status(500).send("Login failed, try again.");
       }
-      res.redirect("/editor");
+      if (user.userType === "editor") {
+        return res.redirect("/editor-dashboard");
+      }
+      if(user.isAdmin===true){
+        return res.redirect('/admin-dashboard');
+      }
+      return res.redirect("/");
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).send("Something went wrong, please try again later.");
   }
 });
 
-router.get("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: "Logout failed" });
-    }
-    res.clearCookie("connect.sid");
-    res.redirect("/");
-  });
-}); 
+
+//   req.session.destroy((err) => {
+//     if (err) {
+//       return res.status(500).json({ message: "Logout failed" });
+//     }
+//     res.clearCookie("connect.sid");
+//     res.redirect("/");
+//   });
+// }); 
 
 router.get("/category/:category", async (req, res)=>{
   try {
@@ -755,4 +805,16 @@ router.get('/download/:id', async (req, res)=>{
   }
 }); 
 
+router.get("/editor-dashboard", (req, res)=>{
+  res.render("editor-dashboard");
+});
+
+router.get("/admin-dashboard",(req,res)=>{
+  res.render("admin-dashboard");
+})
+
+router.get("/settings",(req,res)=>{
+  res.render("settings");
+})
+// router.get("/logout", (req, res) => {
 module.exports=router;

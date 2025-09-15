@@ -33,6 +33,10 @@ const PostSchema = new Schema({
   type: mongoose.Schema.Types.ObjectId,
   ref: 'User',
   required: true
+  },
+  isProBlog:{
+    type:Boolean,
+    default:false
   }
 }); 
 

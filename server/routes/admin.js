@@ -1,5 +1,16 @@
+const express=require("express");
+const router=express.Router();
+const Post = require('../models/post');
+const User = require('../models/User');
+const bcrypt=require("bcrypt");
+const jwt =require("jsonwebtoken");
+require("dotenv").config();
 const multer = require("multer");
 const path = require("path");
+const cookieParser = require("cookie-parser");
+
+router.use(cookieParser());
+
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -14,76 +25,72 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 2 * 1024 * 1024 }
 });
-const express=require("express");
-const router=express.Router();
-const Post = require('../models/post');
-const User = require('../models/User');
-const bcrypt=require("bcrypt");
-const jwt =require("jsonwebtoken");
-require("dotenv").config();
 
 const adminLayout='../views/layouts/admin';
 const jwtSecret=process.env.JWT_SECRET;
 
-const authMiddleware = (req, res, next ) => {
+const authMiddleware = async (req, res, next) => {
   const token = req.cookies.token;
-  try {
-  console.log("Token",token)
-  if(!token) {
-    return res.status(401).json( { message: 'Unauthorized'} );
+  if (!token) {
+    return res.status(401).send('Unauthorized');
   }
-
+  try {
     const decoded = jwt.verify(token, jwtSecret);
-    req.user = { _id: decoded.userId }; 
+    const user = await User.findById(decoded.userId);
+    if (!user || !user.isAdmin) {
+      return res.status(403).send('Access denied'); 
+    }
+    req.user = { _id: user._id, isAdmin: user.isAdmin };
     next();
-  } catch(error) {
-    res.status(401).json( { message: 'Unauthorized'} );
+  } catch (err) {
+    console.error(err);
+    return res.status(401).send('Unauthorized');
   }
-}
+};
 
 
-router.get('/admin', async (req, res) => {
-  try {
-    const locals = {
-      title: "Admin",
-      description: "Simple Blog created with NodeJs, Express & MongoDb."
-    }
+// router.get('/admin', async (req, res) => {
+//   try {
+//     const locals = {
+//       title: "Admin",
+//       description: "Simple Blog created with NodeJs, Express & MongoDb."
+//     }
 
-    res.render('admin/index', { locals, layout: adminLayout });
-  } catch (error) {
-    console.log(error);
-  }
-});
+//     res.render('admin/index', { locals, layout: adminLayout });
+//   } catch (error) {
+//     console.log(error);
+//   }
+// });
 
 
 
-router.post('/admin', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+// router.post('/admin', async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
     
-    const user = await User.findOne( { email } );
+//     const user = await User.findOne( { email } );
 
-    if(!user) {
-      return res.status(401).json( { message: 'Invalid credentials' } );
-    }
+//     if(!user) {
+//       return res.status(401).json( { message: 'Invalid credentials' } );
+//     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+//     const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    if(!isPasswordValid) {
-      return res.status(401).json( { message: 'Invalid credentials' } );
-    }
+//     if(!isPasswordValid) {
+//       return res.status(401).json( { message: 'Invalid credentials' } );
+//     }
 
-    const token = jwt.sign({ userId: user._id}, jwtSecret );
-    res.cookie('token', token, { httpOnly: true });
+//     const token = jwt.sign({ userId: user._id}, jwtSecret );
+//     res.cookie('token', token, { httpOnly: true });
 
-    if(user.isAdmin){
-      res.redirect('/dashboard');
-    }
+//     if(user.isAdmin){
+//       res.redirect('/dashboard');
+//     }
 
-  } catch (error) {
-    console.log(error);
-  }
-});
+//   } catch (error) {
+//     console.log(error);
+//   }
+// });
 
 
 // router.post('/register', async (req, res) => {
@@ -106,7 +113,7 @@ router.post('/admin', async (req, res) => {
 //   }
 // });
 
-
+ 
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     const locals = {
@@ -115,11 +122,15 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
     }
 
     const data = await Post.find();
+    if(req.user.isAdmin) {
     res.render('admin/dashboard', {
       locals,
       data,
       layout: adminLayout
     });
+  }else{
+    res.redirect('/editor-dashboard');
+  }
 
   } catch (error) {
     console.log(error);
@@ -223,16 +234,13 @@ router.delete('/delete-post/:id', authMiddleware, async (req, res) => {
 
 });
 
-router.get('/logout', (req, res) => {
-  res.clearCookie('token');
-  res.redirect('/');
+router.get("/logout", (req, res) => {
+  res.clearCookie("token", { httpOnly: true, path: "/" });
+  res.clearCookie("connect.sid", { path: "/" });
+  req.session.destroy((err) => {
+    if (err) console.error("Session destroy error:", err);
+    return res.redirect("/");
+  });
 });
-
-
-
-
-// router.get("/signup",(req,res)=>{
-//   res.render("
-// })
 
 module.exports=router;

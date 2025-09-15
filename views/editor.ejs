@@ -44,9 +44,10 @@
          <% } %>
           <div class="card-body d-flex flex-column">
             <h5 class="card-title fw-semibold"><%= post.title %></h5>
-            <p class="card-text">
-              <%- post.body.split(" ").slice(0, 30).join(" ") %>...
-            </p>
+            <%let textOnly = post.body.replace(/<[^>]*>/g, "");%>
+                <%let excerpt = textOnly.split(" ").slice(0, 30).join(" ");%>
+                <p class="card-text"><%-excerpt%></p>
+            
             <p class="card-text text-muted mb-2 mt-auto">
               <small><%= post.createdAt.toDateString() %></small>
             </p>

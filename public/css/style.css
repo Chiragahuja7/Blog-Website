@@ -546,4 +546,22 @@ img {
   transform: scale(1.08);
 }
 
+
+.dashboard-btn {
+  background-color:#455a64;
+  border: none;
+  color: white; 
+  padding: 30px 60px;
+  text-decoration: none;
+  margin: 14px 20px; 
+  cursor: pointer;
+  border-radius: 15%;
+}
+
+.dashboard-btn:hover {
+  background-color: #37474f;
+  transform: scale(1.05);
+}
+
+
   

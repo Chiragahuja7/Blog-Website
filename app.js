@@ -89,7 +89,7 @@ app.post('/upload', upload.any(), (req, res) => {
 app.use('/uploads', express.static('uploads'));
 
 app.get("/add-blog",(req,res)=>{
-    res.render("form.ejs");
+    res.render("form.ejs" ,{data:{}});
 })
 
 app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) => {
@@ -105,7 +105,8 @@ app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) 
       body: content,
       image: imagePaths,
       category: req.body.category,
-      author: user._id
+      author: user._id,
+      isProBlog: req.body.isProBlog === 'true' || req.body.isProBlog === 'on' 
     });
     await newBlog.save();
     user.blogsPosted += 1;

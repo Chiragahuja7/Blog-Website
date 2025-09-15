@@ -27,6 +27,16 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
+            <div class="userType-group">
+            <label>
+              <input type="radio" name="userType" value="reader" <%= data && data.userType === 'reader' ? 'checked' : '' %>>
+              Reader
+            </label>
+            <label>
+              <input type="radio" name="userType" value="editor" <%= data && data.userType === 'editor' ? 'checked' : '' %>>
+              Editor
+            </label>
+          </div>
             <button type="submit" class="signup-button">Submit</button>
         </form>
 </body>
