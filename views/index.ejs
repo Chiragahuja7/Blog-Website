@@ -22,6 +22,7 @@
   <div class="row g-4">
     <% data.forEach(post => { %>
       <% if (post.status === "approved") { %>
+        <% if(!post.isProBlog || (post.isProBlog && user && user.hasProAccess)) { %>
       <div class="col-md-4">
         <div class="card h-100 shadow-sm blog-card">
          <% if (post.image) { %>
@@ -50,6 +51,7 @@
           </div>
         </div>
       </div>
+      <% } %>
     <% }}) %>
   </div>
   <!-- <a href="/editor" class="btn btn-primary">Editor</a> -->

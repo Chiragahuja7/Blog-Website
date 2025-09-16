@@ -49,6 +49,8 @@ const authMiddleware = async (req, res, next) => {
 };
 
 
+
+
 // router.get('/admin', async (req, res) => {
 //   try {
 //     const locals = {

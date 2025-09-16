@@ -61,6 +61,17 @@ router.get("/checkout", (req, res) => {
     currentRoute: '/checkout'
   });
 });
+
+//middleware to see if user is editor or not
+function checkEditor(req,res,next){
+  if(!req.session.user){
+    return res.redirect("/login");
+  }
+  if(req.session.user.userType !=="editor"){
+    return res.status(403).send("Access denied. Editors only.");
+  }
+  next();
+}
  
 
 //stripe
@@ -484,7 +495,7 @@ router.get('/post/:id', async (req, res) => {
 });
 
 
-router.get('/editor/post/:id', async (req, res) => {
+router.get('/editor/post/:id',checkEditor, async (req, res) => {
   try {
     let slug = req.params.id;
 
@@ -498,8 +509,9 @@ router.get('/editor/post/:id', async (req, res) => {
     res.render('editor-post', { 
       locals,
       data,
-      currentRoute: `/editor/post/${slug}`
-    });
+      currentRoute: `/editor/post/${slug}`,
+      layout:editorLayout
+    }); 
   } catch (error) {
     console.log(error);
   }
@@ -649,7 +661,9 @@ router.post("/login", async (req, res) => {
       _id: user._id,
       firstname: user.firstname,
       lastname: user.lastname,
-      email: user.email
+      email: user.email,
+      userType:user.userType,
+      hasProAccess:user.hasProAccess,
     };
     
     req.session.save((err) => {
@@ -714,7 +728,7 @@ router.get("/category/:category", async (req, res)=>{
 
 });
 
-router.get('/editor', async (req, res) => {
+router.get('/editor',checkEditor, async (req, res) => {
   try {
     if (!req.session.user) {
       return res.redirect('/login');
@@ -744,7 +758,8 @@ router.get('/editor', async (req, res) => {
       nextPage,
       prevPage,
       totalPages,
-      currentRoute: '/'
+      currentRoute: '/',
+      layout: editorLayout
     });
   } catch (error) {
     console.error(error);
@@ -754,7 +769,7 @@ router.get('/editor', async (req, res) => {
 
 /*editor controls*/
 
-router.get('/editor-edit-post/:id', async (req, res) => {
+router.get('/editor-edit-post/:id',checkEditor, async (req, res) => {
   try {
     const locals = {
       title: "Edit Post",
@@ -764,7 +779,7 @@ router.get('/editor-edit-post/:id', async (req, res) => {
     res.render('editor-edit-post', {
       locals,
       data,
-      layout: adminLayout
+      layout: editorLayout
     })
   } catch (error) {
     console.log(error);
@@ -820,13 +835,11 @@ router.get('/download/:id', async (req, res)=>{
   }
 }); 
 
-router.get("/editor-dashboard", (req, res)=>{
+router.get("/editor-dashboard", checkEditor,(req, res)=>{
   res.render("editor-dashboard",{
     layout:editorLayout
   });
 });
-
-
 
 router.get("/settings",(req,res)=>{
   res.render("settings");
