@@ -11,14 +11,24 @@
 
 <section class="articles container my-4">
   <div class="d-flex justify-content-between align-items-center mb-4 ms-2">
-    <h2 class="articles__heading mb-0 me-2">Latest Posts</h2>
-    <% if (!user) { %>
-  <a href="/login" class="btn-outline-secondary"><img src=/log-in.png alt="login" title="login">Login</a>
-  <% } else { %>
-  <a href="/logout" class="btn-danger ms-2"><img src=/icons8-power-button-64.png alt="logout"></a>
-  <!-- <span class="fs-4 me-2">Welcome, <%= user.firstname %>!</span> -->
-  <% } %>
+  <h2 class="articles__heading mb-0">Latest Posts</h2>
+  
+  <div class="d-flex align-items-center">
+    <% if (user) { %>
+      <% if (!user.hasProAccess) { %>
+        <a href="/checkout" class=" btn-success me-2 text-decoration-none">💳 Pro Access</a>
+      <% } %>
+      <a href="/logout" class=" btn-danger"
+         onclick="return confirm('⚠️ Are you sure you want to log out?');">
+         <img src="/icons8-power-button-64.png" alt="logout">
+      </a>
+    <% } else { %>
+      <a href="/login" class="btn-outline-secondary">
+        <img src="/log-in.png" alt="login" title="login"> Login
+      </a>
+    <% } %>
   </div>
+</div>
   <div class="row g-4">
     <% data.forEach(post => { %>
       <% if (post.status === "approved") { %>
@@ -35,7 +45,11 @@
                   class="card-img-top mb-2"
                   style="max-height: 180px; object-fit: cover;">
            <% } %>
-         <% } %>
+         <% }else{%>
+            <img src="user.png" alt="Default image" 
+                  class="card-img-top mb-2"
+                  style="max-height: 180px; object-fit: cover;">
+        <% } %>
           <div class="card-body d-flex flex-column">
             <h5 class="card-title fw-semibold"><%= post.title %></h5>
             
@@ -54,7 +68,7 @@
       <% } %>
     <% }}) %>
   </div>
-  <!-- <a href="/editor" class="btn btn-primary">Editor</a> -->
+
 <div class="text-center mt-4">
   <% if (prevPage !== null) { %>
     <a href="/?page=<%= prevPage %>" class="btn btn-primary me-2">

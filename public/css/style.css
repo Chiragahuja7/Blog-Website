@@ -134,7 +134,7 @@ img {
   /* grid-area: button; */
 }
 
-.header__button button {
+.header__button a {
   display: flex;
   gap: 0.3rem;
   align-items: center;
@@ -146,9 +146,10 @@ img {
   font-size: 1rem;
   font-weight: 600;
   color: var(--black);
+  text-decoration: none;
 }
 
-.header__button button:hover {
+.header__button a:hover {
   border: 2px solid var(--black);
 }
 

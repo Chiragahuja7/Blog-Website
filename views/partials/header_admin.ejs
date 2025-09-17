@@ -1,9 +1,12 @@
 <header class="header">
     <a href = "/admin-dashboard" class="header__logo">Admin</a>
         <div class="header__button">
-        <button onclick="location.href='/logout'"class="btn">
-        Logout
-        </button>
+        <a href="/logout" 
+   class="btn-danger" 
+   onclick="return confirm('⚠️ Are you sure you want to log out?');">
+   Logout
+</a>
+
     </div>
 
     <nav class="header__nav">

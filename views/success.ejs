@@ -48,9 +48,13 @@
     <div class="payment-wrapper">
   <div class="success-card">
     <h2><%= message %></h2>
+    <% if(user&&user.userType==="editor"){%>
     <a href="/add-blog" class="btn btn-success btn-custom mt-3">✍️ Post a New Blog</a>
     <div class="mt-3">
-      <a href="/" class="text-decoration-none">⬅ Back to Home</a>
+      <a href="/editor-dashboard" class="text-decoration-none">⬅ Back</a>
+    <% } else { %>
+      <a href="/" class="btn btn-primary btn-custom mt-3">🏠Home</a>
+      <% }%>
     </div>
   </div>
   </div>

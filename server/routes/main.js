@@ -18,6 +18,7 @@ const jwt =require("jsonwebtoken");
 
 router.use(express.static('public'));
 const editorLayout='../views/layouts/editor-layout';
+const checkoutLayout='../views/layouts/checkout-layout';
 
 const storage = multer.diskStorage({
   destination: function(req, file, cb){
@@ -58,7 +59,14 @@ const razorpay = new Razorpay({
 
 router.get("/checkout", (req, res) => {
   res.render("checkout", {
-    currentRoute: '/checkout'
+    currentRoute: '/checkout',
+    layout:checkoutLayout
+  });
+});
+
+router.get("/checkout-reader", (req, res) => {
+  res.render("checkout-reader", {
+    currentRoute: '/checkout-reader'
   });
 });
 
@@ -76,7 +84,8 @@ function checkEditor(req,res,next){
 
 //stripe
 router.post("/create-stripe-session", async (req, res) => {
-  try {
+  if(req.session.user.userType==="editor"){
+    try {
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -96,17 +105,45 @@ router.post("/create-stripe-session", async (req, res) => {
     success_url: "http://localhost:5000/payment-success?session_id={CHECKOUT_SESSION_ID}",
     cancel_url: 'http://localhost:5000/cancel',
   });
-  
   res.redirect(303, session.url);
   }catch (error) {
   console.log(error);
   res.status(500).json({ message: 'Internal Server Error' });
   }
+  }else{
+    try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Pro Access (Reader)",
+              description: "Unlock premium content for readers",
+            },
+            unit_amount: 500, // $5.00
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url:
+        "http://localhost:5000/payment-success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "http://localhost:5000/cancel",
+    });
+
+    res.redirect(303, session.url);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }}
 });
 
 
 router.all("/payment-success", async (req, res) => {
-  try {
+  if (req.session.user.userType==="editor"){
+    try {
     // Stripe flow
     if (req.query.session_id) {
       const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
@@ -166,7 +203,8 @@ router.all("/payment-success", async (req, res) => {
           _id: user._id,
           firstname: user.firstname,
           lastname: user.lastname,
-          email: user.email
+          email: user.email,
+          hasProAccess: user.hasProAccess
         };
 
         await new Promise((resolve, reject) => {
@@ -202,11 +240,122 @@ router.all("/payment-success", async (req, res) => {
     console.error(err);
     res.status(500).send("Something went wrong");
   }
+}else{
+  try {
+    if (req.query.session_id) {
+      const session = await stripe.checkout.sessions.retrieve(
+        req.query.session_id
+      );
+
+      if (session.payment_status === "paid") {
+        const user = await User.findById(req.session.user._id);
+        if (!user) return res.status(404).send("User not found");
+
+        if (!user.processedSessions.includes(session.id)) {
+          user.hasProAccess = true;
+          user.processedSessions.push(session.id);
+
+          user.orders.push({
+            gateway: "stripe",
+            orderId: session.id,
+            amount: session.amount_total,
+            currency: session.currency.toUpperCase(),
+            status: "SUCCESS",
+          });
+
+          await user.save();
+          req.session.user = {
+            _id: user._id,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            email: user.email,
+            userType: user.userType,
+            hasProAccess: user.hasProAccess,
+            blogLimit: user.blogLimit
+          };
+        }
+
+        return res.render("success", {
+          message: "You are now a Pro Reader! 🎉",
+        });
+      }
+    }
+    if (req.query.gateway === "razorpay") {
+      return res.render("success", {
+        message: "Payment successful via Razorpay! 🎉"
+      });
+    }
+    if (req.query.gateway === "paypal") {
+      return res.render("success", {
+        message: "Payment successful via Paypal! 🎉"
+      });
+    }
+    if (req.query.gateway === "phonepe") {
+  const userId = req.session?.user?._id || req.query.userId;
+
+  if (!userId || userId === "guest") {
+    return res.render("success", {
+      message: "Payment successful via PhonePe! 🎉",
+      user: null
+    });
+  }
+
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).send("User not found");
+
+  const txnId = req.query.transactionId || "phonepe_" + Date.now();
+
+  if (!Array.isArray(user.processedSessions)) {
+    user.processedSessions = [];
+  }
+
+  if (!user.processedSessions.includes(txnId)) {
+    // update DB
+    user.hasProAccess = true;
+    user.processedSessions.push(txnId);
+    user.orders.push({
+      gateway: "phonepe",
+      orderId: txnId,
+      amount: 47000,
+      currency: "INR",
+      status: "SUCCESS"
+    });
+    await user.save();
+  }
+  req.session.user = {
+    _id: user._id,
+    firstname: user.firstname,
+    lastname: user.lastname,
+    email: user.email,
+    userType: user.userType,
+    hasProAccess: user.hasProAccess,
+    blogLimit: user.blogLimit
+  };
+
+  await new Promise((resolve, reject) => {
+    req.session.save(err => (err ? reject(err) : resolve()));
+  });
+
+  return res.render("success", {
+    message: "Payment successful via PhonePe! 🎉",
+    user: req.session.user
+  });
+}
+
+
+    return res.redirect("/"); 
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Payment processing error");
+  }
+  
+}
 });
 
 
 //razorpay
 router.post("/create-razorpay-order", async (req, res) => {
+  if (req.session.user.userType==="editor"){
   try {
     const options = {
       amount: 930000,
@@ -219,9 +368,24 @@ router.post("/create-razorpay-order", async (req, res) => {
     console.error(err);
     res.status(500).send("Something went wrong");
   }
+}else{
+  try {
+    const options = {
+      amount: 47000,
+      currency: "INR",
+      receipt: "rcpt_" + Date.now()
+    };
+  const order = await razorpay.orders.create(options);
+  res.json({ id: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Something went wrong");
+  }
+}
 });
  
 router.post("/razorpay-verify", async (req, res) => {
+  if (req.session.user.userType==="editor"){
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
 
@@ -246,6 +410,7 @@ router.post("/razorpay-verify", async (req, res) => {
       status: "SUCCESS"
       });
       await user.save();
+      req.session.user.hasProAccess = user.hasProAccess;
 
       return res.json({ success: true });
     } else {
@@ -255,6 +420,41 @@ router.post("/razorpay-verify", async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false });
   }
+}else{
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature === razorpay_signature) {
+      const user = await User.findById(req.session.user._id);
+      if (!user) return res.status(404).send("User not found");
+
+      user.hasProAccess = true;
+      user.processedSessions.push(razorpay_payment_id);
+      user.orders.push({
+      gateway: "razorpay",
+      orderId: razorpay_payment_id,
+      amount: 47000,
+      currency: "INR",
+      status: "SUCCESS"
+      });
+      await user.save();
+      req.session.user.hasProAccess = user.hasProAccess;
+
+      return res.json({ success: true });
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid signature" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+}
 });
  
 // router.get("/razorpay-success", (req, res) => {
@@ -277,6 +477,7 @@ router.get("/create-paypal-order", (req, res) => {
 
 
 router.post("/create-paypal-order", async (req, res) => {
+  if (req.session.user.userType==="editor"){
   try {
     const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
     request.prefer("return=representation");
@@ -297,10 +498,33 @@ router.post("/create-paypal-order", async (req, res) => {
     console.error("Error creating PayPal order:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
+}else{
+  try {
+    const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "USD",
+            value: "5.00"
+          }
+        }
+      ]
+    });
+    const order = await client().execute(request);
+    res.json({ id: order.result.id });
+  } catch (err) {
+    console.error("Error creating PayPal order:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 });
  
 router.post("/capture-paypal-order", async (req, res) => {
   const { orderID } = req.body;
+  if (req.session.user.userType==="editor"){
   try {
     const request = new OrdersCaptureRequest(orderID);
     request.requestBody({});
@@ -330,10 +554,42 @@ router.post("/capture-paypal-order", async (req, res) => {
     console.error("Error capturing PayPal order:", err);
     res.status(500).json({ status: "ERROR", error: err.message });
   }
+}else{
+  try {
+    const request = new OrdersCaptureRequest(orderID);
+    request.requestBody({});
+    const response = await client().execute(request);
+    if (response.result.status === "COMPLETED") {
+      const user = await User.findById(req.session.user._id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      if (!user.processedSessions.includes(orderID)) {
+        user.hasProAccess = true;
+        user.processedSessions.push(orderID);
+
+        user.orders.push({
+        gateway: "paypal",
+        orderId: orderID,
+        amount: 500,     
+        currency: "USD",
+        status: "SUCCESS"
+      });
+
+        await user.save();
+        req.session.user.hasProAccess = user.hasProAccess;
+
+      }
+      return res.json({ status: "COMPLETED", orderID: response.result.id });
+    }
+    res.status(400).json({ status: response.result.status, message: "Payment not completed" });
+  } catch (err) {
+    console.error("Error capturing PayPal order:", err);
+    res.status(500).json({ status: "ERROR", error: err.message });
+  }
+}
 });
 
 
-//paypal
+//phonepe
 const PHONEPE_BASE_URL = process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID;
 const PHONEPE_SALT_KEY = process.env.PHONEPE_SALT_KEY;
@@ -341,15 +597,18 @@ const PHONEPE_SALT_INDEX = process.env.PHONEPE_SALT_INDEX || 1;
 
 router.post("/create-phonepe-order", async (req, res) => {
   try {
+    const user = req.session.user;
+    const isEditor = user && user.userType === "editor";
+    const amount = isEditor ? 930000 : 47000;
+
     const merchantTransactionId = "TXN_" + Date.now();
-    const amount = 930000;
 
     const payload = {
       merchantId: PHONEPE_MERCHANT_ID,
       merchantTransactionId,
-      merchantUserId: req.session.user?._id || "guest",
+      merchantUserId: user?._id || "guest",
       amount,
-      redirectUrl: `http://localhost:5000/payment-success?gateway=phonepe&userId=${req.session.user?._id}`,
+      redirectUrl: `http://localhost:5000/payment-success?gateway=phonepe&userId=${user?._id || "guest"}`,
       redirectMode: "GET",
       callbackUrl: "http://localhost:5000/payment-callback",
       paymentInstrument: { type: "PAY_PAGE" }
@@ -382,6 +641,7 @@ router.post("/create-phonepe-order", async (req, res) => {
     res.status(500).json({ error: "Something went wrong with PhonePe order" });
   }
 });
+
 
 router.post("/payment-callback", async (req, res) => {
   console.log("PhonePe Callback:", req.body);
@@ -784,8 +1044,7 @@ router.get('/editor-edit-post/:id',checkEditor, async (req, res) => {
   } catch (error) {
     console.log(error);
   }
-}); 
-
+});
 
 router.put('/editor-edit-post/:id', upload.single('image'), async (req, res) => {
   try {
@@ -845,4 +1104,5 @@ router.get("/settings",(req,res)=>{
   res.render("settings");
 })
 // router.get("/logout", (req, res) => {
+
 module.exports=router;

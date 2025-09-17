@@ -60,7 +60,11 @@
 <body>
 <div class="payment-wrapper">
   <div class="payment-card">
-    <h2>Pay $100 for 100 Blogs</h2>
+    <% if (user.userType==="editor"){%>
+      <h2>Pay $100 for 100 Blogs</h2>
+    <%}else{%>
+      <h2>Pay $5 for Pro Access</h2>
+      <%}%>
 
     <!-- Stripe button -->
     <form action="/create-stripe-session" method="POST">
@@ -68,8 +72,8 @@
     </form>
 
     <!-- Razorpay button -->
-    <button id="rzp-button" class="btn btn-primary btn-custom">💰 Pay with Razorpay</button>
-    <button id="phonepePay" class="btn btn-primary btn-custom">💰 Pay with PhonePe</button>
+    <button id="rzp-button" class="btn btn-dark btn-custom">💰 Pay with Razorpay</button>
+    <button id="phonepePay" class="btn btn-dark btn-custom">💰 Pay with PhonePe</button>
 
     <!-- PayPal button -->
     <div id="paypal-button-container"></div>

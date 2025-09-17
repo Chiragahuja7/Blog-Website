@@ -2,7 +2,7 @@
 <% if (data.image) { %>
   <% if (Array.isArray(data.image) && data.image.length > 1) { %>
 <div class="d-flex justify-content-center">
-  <div id="postImagesCarousel" class="carousel slide mb-4" data-bs-ride="carousel" style="max-width:600px; width:100%;">
+  <div id="postImagesCarousel" class="carousel slide mb-4" data-bs-ride="carousel" style="max-width:1100px; width:100%;">
     <div class="carousel-inner">
       <% data.image.forEach(function(img, idx) { %>
         <div class="carousel-item <%= idx === 0 ? 'active' : '' %>">
@@ -30,7 +30,7 @@
     <div class="d-flex justify-content-center">
         <img src="<%= Array.isArray(data.image) ? data.image[0] : data.image %>" alt="Blog image" 
         class="img-fluid rounded shadow" 
-        style="max-width:400px; height:auto; margin: 15px 0;">
+        style="max-width:1100px; height:350px;object-fit: cover; margin: 15px 0;">
     </div>
   <% } %>
 <% } %>

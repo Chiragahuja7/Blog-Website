@@ -16,11 +16,11 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const cors = require('cors');
 
-
+const editorLayout="/views/layouts/editor-layout.ejs";
 const app = express();
 const PORT = process.env.PORT || 5000;
 app.use(cors());
-
+ 
 connectDB();
 
 app.use(session({
@@ -97,7 +97,7 @@ app.post('/upload', upload.any(), (req, res) => {
 app.use('/uploads', express.static('uploads'));
 
 app.get("/add-blog",(req,res)=>{
-    res.render("form.ejs" ,{data:{}});
+    res.render("form.ejs" ,{data:{}, layout:editorLayout});
 })
 
 app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) => {
