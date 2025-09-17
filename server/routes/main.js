@@ -228,6 +228,13 @@ router.all("/payment-success", async (req, res) => {
           status: "SUCCESS"
         });
         await user.save();
+        req.session.user = {
+          _id: user._id,
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          hasProAccess: user.hasProAccess
+        };
       }
 
       return res.render("success", {
@@ -464,9 +471,10 @@ router.post("/razorpay-verify", async (req, res) => {
 // });
 
 router.get("/cancel", (req, res) => {
-  res.render("cancel");
+  res.render("cancel",{
+    layout:checkoutLayout
+  });
 });
-
 
 //paypal
 router.get("/create-paypal-order", (req, res) => {
@@ -659,44 +667,41 @@ router.get("/order-history", async (req, res) => {
   });
 }); 
 
+//pagination
 router.get('', async (req, res) => {
   try {
     const locals = {
       title: "NodeJs Blog",
       description: "Simple Blog created with NodeJs, Express & MongoDb."
-    }
-
+    };
     let perPage = 6;
     let page = parseInt(req.query.page) || 1;
-    const data = await Post.find({ status: "approved" })
+    let query = { status: "approved" };
+    if (!req.session.user || !req.session.user.hasProAccess) {
+      query.isProBlog = { $ne: true }; 
+    }
+    const data = await Post.find(query)
       .sort({ createdAt: -1 })
-      .skip(perPage * page - perPage)
+      .skip(perPage * (page - 1))
       .limit(perPage)
       .exec();
 
-    const count = await Post.countDocuments({ status: "approved" });
-
-    // const nextPage = parseInt(page) + 1;
+    const count = await Post.countDocuments(query);
     const totalPages = Math.ceil(count / perPage);
-    const nextPage = page < totalPages ? page + 1 : null;
-    const prevPage = page > 1 ? page - 1 : null;  
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
     res.render('index', {
       locals,
       data,
       current: page,
-      nextPage,
-      prevPage,
       totalPages,
+      pages,
       currentRoute: '/'
     });
-
   } catch (error) {
     console.log(error);
   }
-
 });
-
 
 // router.get('/editor', async (req, res) => {
 //   try {
@@ -776,8 +781,6 @@ router.get('/editor/post/:id',checkEditor, async (req, res) => {
     console.log(error);
   }
 });
-
-
 
 router.post('/search', async (req, res) => {
   try {
@@ -1101,8 +1104,16 @@ router.get("/editor-dashboard", checkEditor,(req, res)=>{
 });
 
 router.get("/settings",(req,res)=>{
-  res.render("settings");
+  res.render("settings",{
+    layout:editorLayout
+  });
 })
-// router.get("/logout", (req, res) => {
 
-module.exports=router;
+router.get("/help",(req,res)=>{
+  res.render("help",{
+    layout:editorLayout
+});
+})
+
+// router.get("/logout", (req, res) => {
+module.exports=router; 

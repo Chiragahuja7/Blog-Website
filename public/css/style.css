@@ -504,20 +504,6 @@ img {
   height: 30px;
 }
 
-.circle {
-  display: inline-flex;   
-  align-items: center;
-  justify-content: center;
-  width: 90px;           
-  height: 45px;       
-  border-radius: 30%;    
-  background-color: #356e9a;  
-  color: rgb(255, 255, 255);     
-  font-size: 15px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
 .circle:hover {
   transform: scale(1.1);  
 }
@@ -564,13 +550,166 @@ img {
   transform: scale(1.05);
 }
 
-.Signup{
-  width:40%;
+.locked-card {
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
-@media (max-width: 400px) {
-  .Signup{
-    width:90%;
+
+.locked-card .overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  transition: background 0.3s ease;
+}
+
+.locked-card:hover .overlay {
+  background: rgba(0,0,0,0.6);
+}
+
+/* Base table styling */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+/* order history table */
+@media (max-width: 1024px) {
+  .table,
+  .table thead,
+  .table tbody,
+  .table th,
+  .table td,
+  .table tr {
+    display: block;
+  }
+
+  .table thead tr {
+    display: none;
+  }
+
+  .table tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
+
+  .table td {
+    padding-left: 50%;
+    position: relative;
+    text-align: left;
+    white-space: normal;
+    border: none;
+    border-bottom: 1px solid #eee;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0.75rem;
+    top: 0.5rem;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
   }
 }
 
-  
+/* pagination */
+/* Wrapper for centering */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Make UL horizontal */
+.pagination {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-wrap: wrap; /* wraps nicely on mobile */
+}
+
+/* Each item as block */
+.pagination li {
+  margin: 0 5px;
+}
+
+/* Page link styles */
+.pagination .page-link {
+  display: block;
+  padding: 10px 16px;
+  background-color: #f8f9fa; /* light gray */
+  color: #333;
+  text-decoration: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Hover */
+.pagination .page-link:hover {
+  background-color: #28a745; /* green */
+  color: #fff;
+  border-color: #28a745;
+}
+
+/* Active page */
+.pagination li.active .page-link {
+  background-color: #28a745;
+  color: #fff;
+  border-color: #28a745;
+}
+
+/* Edit profile  */
+form.signup{
+  width:50%;
+  margin:auto;
+  padding:20px;
+  border:1px solid #ccc;
+  border-radius:10px;
+  background-color:#ffffff;
+}
+
+form.signup label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: bold;
+}
+
+form.signup input[type="text"],
+form.signup input[type="email"] {
+  width: 100%;   /* take full width of container */
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box; /* so padding doesn’t break width */
+}
+
+@media (max-width: 800px) {
+  form.signup {
+    width: 90%;
+    padding: 15px;
+  }
+
+  form.signup h2 {
+    font-size: 20px;
+  }
+}
+

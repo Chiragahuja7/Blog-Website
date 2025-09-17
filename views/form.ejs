@@ -40,9 +40,7 @@
 
            <textarea id="editor"></textarea>
            <input type="hidden" id="content" name="content">
-
-
-
+           
             <div class="mb-3">
               <label for="images" class="form-label">Upload Images</label>
               <input class="form-control" type="file" id="images" name="images" multiple>
@@ -91,7 +89,7 @@
           if (resp && resp.success && resp.files && resp.files.length) {
             resp.files.forEach(file => {
               editor.selection.insertHTML(
-                `<img src="${file}" style="max-width:50%; margin:5px 0;">`
+                `<img src="${file}" alt="" style="max-width:50%; margin:5px 0;">`
               );
             });
             return { path: '', error: 0 };

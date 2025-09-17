@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>edit profile</title>
+    <title>Edit profile</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <form action="/edit-profile" class="Signup" method="POST">
+    <div class="container">
+    <form action="/edit-profile" class="signup" method="POST">
         <label for="firstname"><b>First Name</b></label>
         <input type="text" placeholder="First Name" name="firstname" value="<%= user.firstname %>" required>
 
@@ -17,5 +19,7 @@
         <input type="email" placeholder="Email" name="email" value="<%= user.email %>" required>
 
         <input type="submit" value="Update Profile" class="btn">
+    </form>
+    </div>    
 </body>
 </html>

@@ -1,4 +1,5 @@
 <h2>Order History</h2>
+<div class="table-responsive">
 <table class="table">
   <thead>
     <tr>
@@ -13,13 +14,14 @@
   <tbody>
     <% orders.forEach(order => { %>
       <tr>
-        <td><%= order.gateway %></td>
-        <td><%= order.orderId %></td>
-        <td><%= (order.amount / 100).toFixed(2) %></td>
-        <td><%= order.currency %></td>
-        <td><%= order.status %></td>
-        <td><%= order.createdAt.toDateString() %></td>
-      </tr>
+  <td data-label="Gateway"><%= order.gateway %></td>
+  <td data-label="Order ID"><%= order.orderId %></td>
+  <td data-label="Amount"><%= (order.amount / 100).toFixed(2) %></td>
+  <td data-label="Currency"><%= order.currency %></td>
+  <td data-label="Status"><%= order.status %></td>
+  <td data-label="Date"><%= order.createdAt.toDateString() %></td>
+</tr>
     <% }) %>
   </tbody>
 </table>
+</div>
