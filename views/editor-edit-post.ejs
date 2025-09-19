@@ -1,4 +1,4 @@
-<a href="/editor">&larr; Back</a>
+<a href="/editor" class="editorBackButton">&larr; Back</a>
 <div class="admin-title">
   <h2>View / Edit Post</h2>
 
@@ -24,10 +24,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const editor = new Jodit('#editor', {
     height: 400,
     buttons: [
-      'bold', 'italic', 'underline', '|',
-      'ul', 'ol', '|',
-      'link', 'image'
-    ],
+        'bold', 'italic', 'underline', '|',
+        'ul', 'ol', '|',
+        'link', 'image','table','eraser','brush','justify','fontsize','fullsize','copyformat'
+      ],
     uploader: {
       url: '/upload',
       insertImageAsBase64URI: false,
@@ -35,12 +35,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       process: function (resp) {
         if (resp && resp.success && resp.files && resp.files.length) {
-          // Insert all uploaded images into the editor
           resp.files.forEach(file => {
             editor.selection.insertHTML(`<img src="${file}" style="max-width:50%; margin:5px 0;">`);
           });
-
-          // Return first file for Jodit internal tracking
           return {
             path: '',
             error: 0
@@ -63,17 +60,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     <% if (data.image) { %>
     <p>Current Image:</p>
-    <img src="<%= data.image %>" alt="Blog Image" width="200px">
+    <img src="<%= data.image %>" class="editorEditImage" alt="Blog Image" width="200px">
     <% } %>
 
   <!-- New image upload -->
   <label for="image"><b>New Image</b></label>
   <input type="file" name="image" accept="image/*">
-
+<br>
+<br>
   <label for="category"><b>Category</b></label>
   <select name="category" id="category">
-    <option value="tech" <%= data.category === "tech" ? "selected" : "" %>>tech</option>
-    <option value="ai" <%= data.category === "ai" ? "selected" : "" %>>AI</option>
+    <option value="technology" <%= data.category === "technology" ? "selected" : "" %>>technology</option>
+    <option value="AI" <%= data.category === "AI" ? "selected" : "" %>>AI</option>
     <option value="lifestyle" <%= data.category === "lifestyle" ? "selected" : "" %>>lifestyle</option>
     <option value="animal" <%= data.category === "animal" ? "selected" : "" %>>animal</option>
     <option value="food" <%= data.category === "food" ? "selected" : "" %>>food</option>

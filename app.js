@@ -127,7 +127,6 @@ app.post("/add-blog",checkBlogLimit, upload.array("images",3), async (req, res) 
   }
 })
 
-// make user available in all EJS templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();

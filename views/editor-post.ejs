@@ -1,51 +1,53 @@
-<h1 class="d-flex justify-content-center"><%= data.title %></h1>
-<% if (data.image) { %>
-  <% if (Array.isArray(data.image) && data.image.length > 1) { %>
-<div class="d-flex justify-content-center">
-  <div id="postImagesCarousel" class="carousel slide mb-4" data-bs-ride="carousel" style="max-width:600px; width:100%;">
-    <div class="carousel-inner">
-      <% data.image.forEach(function(img, idx) { %>
-        <div class="carousel-item <%= idx === 0 ? 'active' : '' %>">
-          <img src="<%= img %>" 
-               class="d-block w-100"
-               alt="Blog image"
-               style="max-height:350px; object-fit:cover; border-radius:10px;">
+<div class="editor-post-container">
+  <h1 class="d-flex justify-content-center"><%= data.title %></h1>
+
+  <% if (data.image) { %>
+    <% if (Array.isArray(data.image) && data.image.length > 1) { %>
+      <div class="d-flex justify-content-center">
+        <div id="postImagesCarousel" class="carousel slide mb-4" data-bs-ride="carousel" style="max-width:1150px; width:100%;">
+          <div class="carousel-inner">
+            <% data.image.forEach(function(img, idx) { %>
+              <div class="carousel-item <%= idx === 0 ? 'active' : '' %>">
+                <img src="<%= img %>" 
+                     class="d-block w-100"
+                     alt="Blog image"
+                     style="max-height:350px; object-fit:cover; border-radius:10px;">
+              </div>
+            <% }) %>
+          </div>
+
+          <button class="carousel-control-prev" type="button" data-bs-target="#postImagesCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+
+          <button class="carousel-control-next" type="button" data-bs-target="#postImagesCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
         </div>
-      <% }) %>
-    </div>
-
-    <button class="carousel-control-prev" type="button" data-bs-target="#postImagesCarousel" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Previous</span>
-    </button>
-
-    <button class="carousel-control-next" type="button" data-bs-target="#postImagesCarousel" data-bs-slide="next">
-      <span class="carousel-control-next-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Next</span>
-    </button>
-  </div>
-</div>
-
-  <% } else { %>
-    <div class="d-flex justify-content-center">
-        <img src="<%= Array.isArray(data.image) ? data.image[0] : data.image %>" alt="Blog image" 
-        class="img-fluid rounded shadow" 
-        style="max-width:400px; height:auto; margin: 15px 0;">
-    </div>
+      </div>
+    <% } else { %>
+      <div class="d-flex justify-content-center">
+          <img src="<%= Array.isArray(data.image) ? data.image[0] : data.image %>" alt="Blog image" 
+          class="img-fluid rounded shadow" 
+          style="max-width:1150px; height:350px;object-fit:cover; margin: 15px 0;">
+      </div>
+    <% } %>
   <% } %>
-<% } %>
-<p class="article d-flex justify-content-center"><%- data.body %></p>
 
-<hr>
-<ul class="editor-posts">
-        <li>
-        <div class="editor-post-controls">
+  <p class="article d-flex justify-content-center"><%- data.body %></p>
+
+  <hr>
+
+  <ul class="editor-posts">
+    <li>
+      <div class="editor-post-controls">
         <a href="/editor-edit-post/<%= data._id %>" class="btn">Edit</a>
-
         <form action="/editor-delete-post/<%= data._id %>?_method=DELETE" method="POST">
           <input type="submit" value="Delete" class="btn btn-danger ms-2">
         </form>
       </div>
-      </li>
-</ul>
-
+    </li>
+  </ul>
+</div>

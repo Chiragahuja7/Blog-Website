@@ -1,5 +1,5 @@
 <header class="header">
-    <a href="/" class="header__logo">⚓ThoughtDock </a>
+    <a href="/" class="header__logo">🪶Quillo </a>
     <%- include("../partials/search.ejs")%>
 
     <nav class="header__nav">
@@ -18,7 +18,9 @@
                 <li><a href="/category/travel">travel</a></li>
               </ul>
             </li>
-            <li><a href="/profile">Profile</a></li>
+            <%if (user){%>
+              <li><a href="/profile">Profile</a></li>
+           <% }%>
         </ul>
     </nav>
 <script>

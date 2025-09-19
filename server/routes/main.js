@@ -64,12 +64,6 @@ router.get("/checkout", (req, res) => {
   });
 });
 
-router.get("/checkout-reader", (req, res) => {
-  res.render("checkout-reader", {
-    currentRoute: '/checkout-reader'
-  });
-});
-
 //middleware to see if user is editor or not
 function checkEditor(req,res,next){
   if(!req.session.user){
@@ -80,7 +74,6 @@ function checkEditor(req,res,next){
   }
   next();
 }
- 
 
 //stripe
 router.post("/create-stripe-session", async (req, res) => {
@@ -122,7 +115,7 @@ router.post("/create-stripe-session", async (req, res) => {
               name: "Pro Access (Reader)",
               description: "Unlock premium content for readers",
             },
-            unit_amount: 500, // $5.00
+            unit_amount: 500,
           },
           quantity: 1,
         },
@@ -139,226 +132,141 @@ router.post("/create-stripe-session", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }}
 });
-
-
+//Payment Success Route
 router.all("/payment-success", async (req, res) => {
-  if (req.session.user.userType==="editor"){
-    try {
-    // Stripe flow
+  const sessionUser = req.session && req.session.user ? req.session.user : null;
+  const queryGateway = req.query.gateway;
+  const isEditor = (sessionUser && sessionUser.userType === "editor") || req.query.userType === "editor";
+
+  try {
+    // STRIPE flow
     if (req.query.session_id) {
-      const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
-
-      if (session.payment_status === "paid") {
-        const user = await User.findById(req.session.user._id);
-        if (!user) return res.status(404).send("User not found");
-
-        if (!user.processedSessions.includes(session.id)) {
-          user.hasPaid = true;
-          user.blogLimit += 100;
-          user.processedSessions.push(session.id);
-          user.orders.push({
-            gateway: "stripe",
-            orderId: session.id,
-            amount: session.amount_total,
-            currency: session.currency.toUpperCase(),
-            status: "SUCCESS"
-          });
-          await user.save();
+      const stripeSession = await stripe.checkout.sessions.retrieve(req.query.session_id);
+      if (stripeSession.payment_status === "paid") {
+        const userId = sessionUser?._id || req.query.userId;
+        if (userId && userId !== 'guest') {
+          const user = await User.findById(userId);
+          if (user) {
+            if (!Array.isArray(user.processedSessions)) user.processedSessions = [];
+            if (!user.processedSessions.includes(stripeSession.id)) {
+              if (isEditor) {
+                user.hasPaid = true;
+                user.blogLimit = (user.blogLimit || 0) + 100;
+              } else {
+                user.hasProAccess = true;
+              }
+              user.processedSessions.push(stripeSession.id);
+              user.orders.push({
+                gateway: "stripe",
+                orderId: stripeSession.id,
+                amount: stripeSession.amount_total,
+                currency: stripeSession.currency ? stripeSession.currency.toUpperCase() : "USD",
+                status: "SUCCESS"
+              });
+              await user.save();
+              if (sessionUser) {
+                req.session.user = {
+                  _id: user._id,
+                  firstname: user.firstname,
+                  lastname: user.lastname,
+                  email: user.email,
+                  userType: user.userType,
+                  hasProAccess: user.hasProAccess,
+                  blogLimit: user.blogLimit
+                };
+              }
+            }
+          }
         }
 
         return res.render("success", {
-          message: "Payment successful via Stripe! 🎉"
+          message: isEditor ? "Payment successful via Stripe! 🎉" : "You are now a Pro Reader! 🎉"
         });
       }
     }
 
     // PayPal flow
-    if (req.query.gateway === "paypal") {
+    if (queryGateway === "paypal") {
       return res.render("success", {
         message: "Payment successful via PayPal! 🎉"
       });
     }
 
     // Razorpay flow
-    if (req.query.gateway === "razorpay") {
+    if (queryGateway === "razorpay") {
       return res.render("success", {
         message: "Payment successful via Razorpay! 🎉"
       });
     }
-    // PhonePe flow
-    if (req.query.gateway === "phonepe") {
-      const userId = req.session?.user?._id || req.query.userId;
 
+    // PhonePe flow
+    if (queryGateway === "phonepe") {
+      const userId = sessionUser?._id || req.query.userId;
       if (!userId || userId === 'guest') {
+        const txnId = req.query.transactionId;
         return res.render("success", {
-          message: "Payment successful via PhonePe! 🎉"
+          message: txnId ? "Payment processed via PhonePe" : "Payment flow completed via PhonePe",
+          user: null
         });
       }
 
       const user = await User.findById(userId);
       if (!user) return res.status(404).send("User not found");
 
-      if (!req.session.user) {
-        req.session.user = {
-          _id: user._id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          hasProAccess: user.hasProAccess
-        };
-
-        await new Promise((resolve, reject) => {
-          req.session.save(err => err ? reject(err) : resolve());
-        });
-      }
-
       const txnId = req.query.transactionId || "phonepe_" + Date.now();
-
       if (!Array.isArray(user.processedSessions)) user.processedSessions = [];
 
       if (!user.processedSessions.includes(txnId)) {
-        user.hasPaid = true;
-        user.blogLimit += 100;
-        user.processedSessions.push(txnId);
-        user.orders.push({
-          gateway: "phonepe",
-          orderId: txnId,
-          amount: 930000, 
-          currency: "INR",
-          status: "SUCCESS"
-        });
-        await user.save();
-        req.session.user = {
-          _id: user._id,
-          firstname: user.firstname,
-          lastname: user.lastname,
-          email: user.email,
-          hasProAccess: user.hasProAccess
-        };
-      }
-
-      return res.render("success", {
-        message: "Payment successful via PhonePe! 🎉"
-      });
-    }
-    console.log(req.query.gateway);
-    return res.status(400).send("Invalid payment success callback");
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Something went wrong");
-  }
-}else{
-  try {
-    if (req.query.session_id) {
-      const session = await stripe.checkout.sessions.retrieve(
-        req.query.session_id
-      );
-
-      if (session.payment_status === "paid") {
-        const user = await User.findById(req.session.user._id);
-        if (!user) return res.status(404).send("User not found");
-
-        if (!user.processedSessions.includes(session.id)) {
-          user.hasProAccess = true;
-          user.processedSessions.push(session.id);
-
+        if (req.session.user.userType==="editor") {
+          user.hasPaid = true;
+          user.blogLimit = (user.blogLimit || 0) + 100;
           user.orders.push({
-            gateway: "stripe",
-            orderId: session.id,
-            amount: session.amount_total,
-            currency: session.currency.toUpperCase(),
-            status: "SUCCESS",
+            gateway: "phonepe",
+            orderId: txnId,
+            amount: 930000,
+            currency: "INR",
+            status: "SUCCESS"
           });
-
-          await user.save();
-          req.session.user = {
-            _id: user._id,
-            firstname: user.firstname,
-            lastname: user.lastname,
-            email: user.email,
-            userType: user.userType,
-            hasProAccess: user.hasProAccess,
-            blogLimit: user.blogLimit
-          };
+        } else {
+          user.hasProAccess = true;
+          user.orders.push({
+            gateway: "phonepe",
+            orderId: txnId,
+            amount: 47000,
+            currency: "INR",
+            status: "SUCCESS"
+          });
         }
-
-        return res.render("success", {
-          message: "You are now a Pro Reader! 🎉",
-        });
+        user.processedSessions.push(txnId);
+        await user.save();
       }
-    }
-    if (req.query.gateway === "razorpay") {
+
+      req.session.user = {
+        _id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        userType: user.userType,
+        hasProAccess: user.hasProAccess,
+        blogLimit: user.blogLimit
+      };
+
+      await new Promise((resolve, reject) => {
+        req.session.save(err => (err ? reject(err) : resolve()));
+      });
+
       return res.render("success", {
-        message: "Payment successful via Razorpay! 🎉"
+        message: "Payment successful via PhonePe! 🎉",
+        user: req.session.user
       });
     }
-    if (req.query.gateway === "paypal") {
-      return res.render("success", {
-        message: "Payment successful via Paypal! 🎉"
-      });
-    }
-    if (req.query.gateway === "phonepe") {
-  const userId = req.session?.user?._id || req.query.userId;
 
-  if (!userId || userId === "guest") {
-    return res.render("success", {
-      message: "Payment successful via PhonePe! 🎉",
-      user: null
-    });
-  }
-
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).send("User not found");
-
-  const txnId = req.query.transactionId || "phonepe_" + Date.now();
-
-  if (!Array.isArray(user.processedSessions)) {
-    user.processedSessions = [];
-  }
-
-  if (!user.processedSessions.includes(txnId)) {
-    // update DB
-    user.hasProAccess = true;
-    user.processedSessions.push(txnId);
-    user.orders.push({
-      gateway: "phonepe",
-      orderId: txnId,
-      amount: 47000,
-      currency: "INR",
-      status: "SUCCESS"
-    });
-    await user.save();
-  }
-  req.session.user = {
-    _id: user._id,
-    firstname: user.firstname,
-    lastname: user.lastname,
-    email: user.email,
-    userType: user.userType,
-    hasProAccess: user.hasProAccess,
-    blogLimit: user.blogLimit
-  };
-
-  await new Promise((resolve, reject) => {
-    req.session.save(err => (err ? reject(err) : resolve()));
-  });
-
-  return res.render("success", {
-    message: "Payment successful via PhonePe! 🎉",
-    user: req.session.user
-  });
-}
-
-
-    return res.redirect("/"); 
+    return res.render("cancel", { layout: checkoutLayout });
   } catch (error) {
-    console.error(error);
-    res.status(500).send("Payment processing error");
+    console.error("Payment success handler error:", error);
+    return res.render("cancel", { layout: checkoutLayout,user: req.session.user || null });
   }
-  
-}
 });
-
 
 //razorpay
 router.post("/create-razorpay-order", async (req, res) => {
@@ -463,7 +371,7 @@ router.post("/razorpay-verify", async (req, res) => {
   }
 }
 });
- 
+
 // router.get("/razorpay-success", (req, res) => {
 //   res.render("success", {
 //     message: "Payment successful via Razorpay! You can now post more blogs."
@@ -482,7 +390,6 @@ router.get("/create-paypal-order", (req, res) => {
     currentRoute: '/create-paypal-order'
   });
 });
-
 
 router.post("/create-paypal-order", async (req, res) => {
   if (req.session.user.userType==="editor"){
@@ -596,7 +503,6 @@ router.post("/capture-paypal-order", async (req, res) => {
 }
 });
 
-
 //phonepe
 const PHONEPE_BASE_URL = process.env.PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox";
 const PHONEPE_MERCHANT_ID = process.env.PHONEPE_MERCHANT_ID;
@@ -650,7 +556,6 @@ router.post("/create-phonepe-order", async (req, res) => {
   }
 });
 
-
 router.post("/payment-callback", async (req, res) => {
   console.log("PhonePe Callback:", req.body);
   res.sendStatus(200);
@@ -664,10 +569,12 @@ router.get("/order-history", async (req, res) => {
 
   res.render("order-history", {
     orders: user.orders || [],
+    layout:editorLayout
+
   });
 }); 
 
-//pagination
+//pagination+Main page
 router.get('', async (req, res) => {
   try {
     const locals = {
@@ -696,7 +603,8 @@ router.get('', async (req, res) => {
       current: page,
       totalPages,
       pages,
-      currentRoute: '/'
+      currentRoute: '/',
+      user: req.session.user
     });
   } catch (error) {
     console.log(error);
@@ -867,7 +775,7 @@ router.post("/edit-profile", async (req, res) => {
 
 
 router.get("/signup",(req,res)=>{
-  res.render("signup.ejs" , data={});
+  res.render("signup.ejs" , {data:{}});
 });
 
 router.post("/signup", async (req, res) => {
@@ -883,7 +791,7 @@ router.post("/signup", async (req, res) => {
         email: user.email,
         userType: userType || "reader"
       };
-      res.redirect("/login");
+      res.redirect("/login?success=true");
     } catch (error) {
       if (error.code === 11000) {
         return res.status(409).json({ message: 'Username or Email already in use' });
@@ -898,7 +806,9 @@ router.post("/signup", async (req, res) => {
 
 
 router.get("/login",(req,res)=>{
-  res.render("login.ejs");
+  res.render("login.ejs",{
+    success:req.query.success
+  });
 });
 
 const jwtSecret=process.env.JWT_SECRET;
@@ -958,37 +868,41 @@ router.post("/login", async (req, res) => {
 //   });
 // }); 
 
-router.get("/category/:category", async (req, res)=>{
+router.get("/category/:category", async (req, res) => {
   try {
     const locals = {
       title: "Category",
       description: "Simple Blog created with NodeJs, Express & MongoDb."
-    }
+    };
     let category = req.params.category;
     let perPage = 6;
-    let page = req.query.page || 1;
+    let page = parseInt(req.query.page) || 1;
+    let query = { category: category, status: "approved", };
+
     console.log('Requested category:', category);
-    const data = await Post.aggregate([ { $match: { category: category } }, { $sort: { createdAt: -1 } } ])
-      .skip(perPage * page - perPage)
+    const data = await Post.aggregate([
+      { $match: query },
+      { $sort: { createdAt: -1 } }
+    ])
+      .skip(perPage * (page - 1))
       .limit(perPage)
       .exec();
-    console.log('Fetched posts:', data);
-    const count = await Post.countDocuments({ category: category });
+
+    const count = await Post.countDocuments(query);
     const totalPages = Math.ceil(count / perPage);
-    const nextPage = page < totalPages ? page + 1 : null;
-    const prevPage = page > 1 ? page - 1 : null;  
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
     res.render('index', {
       locals,
       data,
       current: page,
-      nextPage,
-      prevPage,
+      totalPages,
+      pages,
       currentRoute: `/category/${category}`
     });
-  } catch (error) { 
+  } catch (error) {
     console.log(error);
   }
-
 });
 
 router.get('/editor',checkEditor, async (req, res) => {

@@ -11,7 +11,6 @@ const cookieParser = require("cookie-parser");
 
 router.use(cookieParser());
 
-
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -47,9 +46,6 @@ const authMiddleware = async (req, res, next) => {
     return res.status(401).send('Unauthorized');
   }
 };
-
-
-
 
 // router.get('/admin', async (req, res) => {
 //   try {
@@ -128,7 +124,9 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       description: 'Simple Blog created with NodeJs, Express & MongoDb.'
     }
 
-    const data = await Post.find();
+    const data = await Post.find()
+    .sort({ createdAt: -1 })
+    .exec();
     if(req.user.isAdmin) {
     res.render('admin/dashboard', {
       locals,
@@ -141,7 +139,6 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
   }
 
 });
-
 
 router.get('/add-post', authMiddleware, async (req, res) => {
   try {
@@ -161,7 +158,6 @@ router.get('/add-post', authMiddleware, async (req, res) => {
   }
 
 });
-
 
 router.post('/add-post', authMiddleware, upload.array("images", 3), async (req, res) => {
   try {
