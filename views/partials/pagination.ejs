@@ -1,0 +1,24 @@
+<ul class="pagination">
+  <% 
+    // Build query string prefix for search term if exists
+    const queryPrefix = searchTerm ? 'term=' + encodeURIComponent(searchTerm) + '&' : '';
+  %>
+
+  <% if (current > 1) { %>
+    <li>
+      <a class="page-link" href="<%= currentRoute %>?<%= queryPrefix %>page=<%= current - 1 %>">&laquo; Prev</a>
+    </li>
+  <% } %>
+
+  <% pages.forEach(p => { %>
+    <li class="<%= p === current ? 'active' : '' %>">
+      <a class="page-link" href="<%= currentRoute %>?<%= queryPrefix %>page=<%= p %>"><%= p %></a>
+    </li>
+  <% }) %>
+
+  <% if (current < totalPages) { %>
+    <li>
+      <a class="page-link" href="<%= currentRoute %>?<%= queryPrefix %>page=<%= current + 1 %>">Next &raquo;</a>
+    </li>
+  <% } %>
+</ul>

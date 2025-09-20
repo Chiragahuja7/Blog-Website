@@ -69,7 +69,8 @@ document.addEventListener("DOMContentLoaded", function () {
 <br>
 <br>
   <label for="category"><b>Category</b></label>
-  <select name="category" id="category">
+  <div class="category-editor">
+  <select name="category" id="category" class="category-editor-2">
     <option value="technology" <%= data.category === "technology" ? "selected" : "" %>>technology</option>
     <option value="AI" <%= data.category === "AI" ? "selected" : "" %>>AI</option>
     <option value="lifestyle" <%= data.category === "lifestyle" ? "selected" : "" %>>lifestyle</option>
@@ -77,7 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
     <option value="food" <%= data.category === "food" ? "selected" : "" %>>food</option>
    <option value="travel" <%= data.category === "travel" ? "selected" : "" %>>travel</option>
   </select>
-
-  <input type="submit" value="Update" class="btn">
+</div>
+  <input type="submit" value="Update" class="btn btn-primary">
 
 </form>

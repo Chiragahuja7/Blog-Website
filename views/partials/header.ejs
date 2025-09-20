@@ -1,6 +1,26 @@
 <header class="header">
-    <a href="/" class="header__logo">🪶Quillo </a>
-    <%- include("../partials/search.ejs")%>
+    <a href="/" class="header__logo">🪶Quillo  </a>
+      <div class="searchBar">
+    <div class="container">
+        <form action="/" class="search__form " role="search" method="get">
+        <div>
+        <input 
+        type="text"
+        value="<%= typeof searchTerm !== 'undefined' ? searchTerm : ''%>"
+        aria-label="Search"
+        id="searchInput"
+        name="term"
+        placeholder=
+        "Search Blog...">
+        </div>
+        </form>
+    </div>
+    <button type="button" id="searchClose">&times;</button>
+</div>
+<!-- <form action="/" method="get" class="d-flex">
+  <input type="text" name="term" value="<%= searchTerm || '' %>" placeholder="Search..." class="form-control" />
+  <button type="submit" class="btn btn-primary">Search</button>
+</form> -->
 
     <nav class="header__nav">
         <ul>
@@ -23,6 +43,7 @@
            <% }%>
         </ul>
     </nav>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.dropbtn').forEach(function(btn) {

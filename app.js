@@ -20,7 +20,6 @@ const editorLayout="/views/layouts/editor-layout.ejs";
 const app = express();
 const PORT = process.env.PORT || 5000;
 app.use(cors());
- 
 connectDB();
 
 app.use(session({
@@ -31,6 +30,13 @@ app.use(session({
       mongoUrl: process.env.MONGODB_URI
     })
 }));
+
+app.use((req, res, next) => {
+  if (typeof res.locals.searchTerm === "undefined") {
+    res.locals.searchTerm = ""; // default empty for all views
+  }
+  next();
+});
 
 // allow larger payloads from rich-text editors (images as base64 or long HTML)
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

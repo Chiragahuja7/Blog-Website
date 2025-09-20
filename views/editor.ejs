@@ -12,7 +12,7 @@
 </head>
 <body>
 <div class="d-flex align-items-center justify-content-between mb-4">
-  <h1 class="fw-bold">Your Space</h1>
+  <h1 class="fw-bold">My Space</h1>
   
   <div class="d-flex gap-3">
     <a href="/add-blog" 
@@ -54,28 +54,56 @@
             <p class="card-text text-muted mb-2 mt-auto">
               <small><%= post.createdAt.toDateString() %></small>
             </p>
-            <a href="editor/post/<%= post._id %>" class="stretched-link"></a>
+            <a href="/editor/post/<%= post._id %>" class="stretched-link"></a>
           </div>
         </div>
       </div>
     <% }) %>
   </div>
 
-  <div class="text-center mt-4">
-    <% if (prevPage !== null) { %>
-      <a href="/editor/?page=<%= prevPage %>" class="btn btn-primary me-2">
-        &lt; Newer Posts
-      </a>
+ <div class="pagination-wrapper">
+  <ul class="pagination">
+    <% if (current > 1) { %>
+      <li>
+        <a class="page-link" href="/editor/?page=<%= current - 1 %>">&laquo; Prev</a>
+      </li>
     <% } %>
 
-    <% if (nextPage !== null) { %>
-      <a href="/editor/?page=<%= nextPage %>" class="btn btn-primary">
-        Older Posts &gt;
-      </a>
+    <% pages.forEach(p => { %>
+      <li class="<%= p === current ? 'active' : '' %>">
+        <a class="page-link" href="/editor/?page=<%= p %>"><%= p %></a>
+      </li>
+    <% }) %>
+
+    <% if (current < totalPages) { %>
+      <li>
+        <a class="page-link" href="/editor/?page=<%= current + 1 %>">Next &raquo;</a>
+      </li>
     <% } %>
-  </div>
+  </ul>
+</div>
 </section>
-
+    <%if (typeof success !== 'undefined' && success === 'status'){%>
+      <div class="alert alert-success alert-dismissible fade show text-center position-fixed top-0 start-50 translate-middle-x mt-3 w-50 shadow" role="alert">
+      ✅ Post updated successfully!
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <%}%>
+    <% if (typeof error !== 'undefined') { %>
+  <div class="alert alert-danger alert-dismissible fade show text-center " role="alert">
+    ❌ Something went wrong. Please try again.
+  </div>
+   <% } %>
+  </div>
+<script>
+  setTimeout(() => {
+    const alertEl = document.querySelector('.alert');
+    if (alertEl) {
+      const bsAlert = new bootstrap.Alert(alertEl);
+      bsAlert.close();
+    }
+  }, 2000);
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- ✅ SweetAlert2 trigger -->

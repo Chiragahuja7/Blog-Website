@@ -1,7 +1,7 @@
 <h1 class="d-flex justify-content-center"><%= data.title %></h1>
+<h4 class="category-badge"><%= data.category %></h4>
 
 <% if (Array.isArray(data.image) && data.image.length > 1) { %>
-  <!-- Carousel for multiple images -->
   <div class="d-flex justify-content-center">
     <div id="postImagesCarousel" class="carousel slide mb-4" data-bs-ride="carousel" style="max-width:1100px; width:100%;">
       <div class="carousel-inner">
@@ -37,7 +37,6 @@
   </div>
 
 <% } else { %>
-  <!-- Default fallback image -->
   <div class="d-flex justify-content-center">
     <img src="/image.png" alt="Default Blog image" 
          class="img-fluid rounded shadow" 
@@ -59,7 +58,7 @@
     </button>
   </div>
 
-<div id="blogContent" class="blog-content">
+<div id="blogContent" class="blog-content table-responsive">
   <%- data.body %>
 </div>
 
@@ -68,78 +67,82 @@
 </a>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const playPauseBtn = document.getElementById("playPauseBtn");
-    const stopBtn = document.getElementById("stopBlog");
-    const blogContainer = document.getElementById("blogContent");
+ document.addEventListener("DOMContentLoaded", function () {
+  const playPauseBtn = document.getElementById("playPauseBtn");
+  const stopBtn = document.getElementById("stopBlog");
+  const blogContainer = document.getElementById("blogContent");
 
-    let speech;
-    let isPlaying = false;
+  let speech = null;
+  let isPlaying = false;
 
-    // ✅ Extract only readable text (skip images, etc.)
-    function getCleanBlogText() {
-      if (!blogContainer) return "";
-      const clone = blogContainer.cloneNode(true);
+  function getCleanBlogText() {
+    if (!blogContainer) return "";
+    const clone = blogContainer.cloneNode(true);
+    clone.querySelectorAll("img, script, style, iframe, video, audio").forEach(el => el.remove());
+    return clone.innerText.trim();
+  }
 
-      // Remove unwanted elements
-      clone.querySelectorAll("img, script, style, iframe, video, audio").forEach(el => el.remove());
-
-      // Get only visible text
-      return clone.innerText.trim();
-    }
-
-    function updateButton() {
-      if (playPauseBtn) {
-        playPauseBtn.textContent = isPlaying ? "⏸" : "▶";
-      }
-    }
-
+  function updateButton() {
     if (playPauseBtn) {
-      playPauseBtn.addEventListener("click", () => {
-        if (!isPlaying) {
-          if (speechSynthesis.paused) {
-            speechSynthesis.resume();
-          } else {
-            const blogText = getCleanBlogText();
-            if (!blogText) {
-              alert("No readable text found in the blog!");
-              return;
-            }
-            speech = new SpeechSynthesisUtterance(blogText);
-            speech.lang = "en-US";
-            speech.rate = 1;
-            speech.pitch = 1;
-            speechSynthesis.speak(speech);
+      playPauseBtn.textContent = isPlaying ? "⏸" : "▶";
+    }
+  }
 
-            speech.onend = () => {
-              isPlaying = false;
-              updateButton();
-            };
-          }
+  function startSpeech() {
+    const blogText = getCleanBlogText();
+    if (!blogText) {
+      alert("No readable text found in the blog!");
+      return;
+    }
+
+    speech = new SpeechSynthesisUtterance(blogText);
+    speech.lang = "en-US";
+    speech.rate = 1;
+    speech.pitch = 1;
+
+    speech.onend = () => {
+      isPlaying = false;
+      speech = null;
+      updateButton();
+    };
+
+    speechSynthesis.speak(speech);
+    isPlaying = true;
+    updateButton();
+  }
+
+  if (playPauseBtn) {
+    playPauseBtn.addEventListener("click", () => {
+      if (speechSynthesis.speaking) {
+        if (speechSynthesis.paused) {
+          speechSynthesis.resume();
           isPlaying = true;
         } else {
           speechSynthesis.pause();
           isPlaying = false;
         }
-        updateButton();
-      });
-    }
-
-    if (stopBtn) {
-      stopBtn.addEventListener("click", () => {
-        speechSynthesis.cancel();
-        isPlaying = false;
-        speech = null;
-        updateButton();
-      });
-    }
-
-    // ✅ Stop speech when leaving the page
-    window.addEventListener("beforeunload", () => {
-      speechSynthesis.cancel();
+      } else {
+        startSpeech();
+      }
+      updateButton();
     });
+  }
 
-    updateButton();
+  if (stopBtn) {
+    stopBtn.addEventListener("click", () => {
+      speechSynthesis.cancel();
+      isPlaying = false;
+      speech = null;
+      updateButton();
+    });
+  }
+
+  window.addEventListener("beforeunload", () => {
+    speechSynthesis.cancel();
   });
+
+  updateButton();
+});
+
 </script>
 

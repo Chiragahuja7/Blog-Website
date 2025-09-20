@@ -29,7 +29,7 @@
             </div>
             <div class="userType-group">
             <label>
-              <input type="radio" name="userType" value="reader" <%= data && data.userType === 'reader' ? 'checked' : '' %>>
+              <input type="radio" name="userType" value="reader" checked <%= data && data.userType === 'reader' ? 'checked' : '' %>>
               Reader
             </label>
             <label>
@@ -37,8 +37,19 @@
               Editor
             </label>
           </div>
-            <button type="submit" class="btn signup-button">Submit</button>
+            <button type="submit" class="btn btn-primary signup-button">Submit</button>
+            <% if (error) { %>
+            <div class="alert alert-danger"><%= error %></div>
+            <% } %>
         </form>
-
+<script>
+  setTimeout(() => {
+    const alertEl = document.querySelector('.alert');
+    if (alertEl) {
+      const bsAlert = new bootstrap.Alert(alertEl);
+      bsAlert.close();
+    }
+  }, 2000);
+</script>
 </body>
 </html>

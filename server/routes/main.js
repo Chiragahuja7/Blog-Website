@@ -15,6 +15,7 @@ const striptags = require("striptags");
 const { OrdersCaptureRequest } = checkoutNodeJssdk.orders;
 const axios = require('axios');
 const jwt =require("jsonwebtoken");
+require("dotenv").config();
 
 router.use(express.static('public'));
 const editorLayout='../views/layouts/editor-layout';
@@ -31,6 +32,52 @@ const storage = multer.diskStorage({
 }); 
 const upload = multer({ storage: storage });
  
+async function renderMainPage(req, res, user) {
+  const locals = {
+    title: req.query.term ? "Search Results" : "NodeJs Blog",
+    description: "Simple Blog created with NodeJs, Express & MongoDb."
+  };
+
+  let perPage = 6;
+  let page = parseInt(req.query.page) || 1;
+  let searchTerm = req.query.term || "";
+  const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
+
+  let query = { status: "approved" };
+
+  if (!user || !user.hasProAccess) {
+    query.isProBlog = { $ne: true };
+  }
+
+  if (searchNoSpecialChar) {
+    query.$or = [
+      { title: { $regex: new RegExp(searchNoSpecialChar, "i") } },
+      { body: { $regex: new RegExp(searchNoSpecialChar, "i") } }
+    ];
+  }
+
+  const data = await Post.find(query)
+    .sort({ createdAt: -1 })
+    .skip(perPage * (page - 1))
+    .limit(perPage)
+    .exec();
+
+  const count = await Post.countDocuments(query);
+  const totalPages = Math.ceil(count / perPage);
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  res.render("index", {
+    locals,
+    data,
+    searchTerm,
+    current: page,
+    totalPages,
+    pages,
+    currentRoute: "/",
+    user
+  });
+}
+
 // router.post('/upload', upload.array('files', 10), (req, res) => {
 //   const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
 
@@ -95,8 +142,8 @@ router.post("/create-stripe-session", async (req, res) => {
       },
     ],
     mode: 'payment',
-    success_url: "http://localhost:5000/payment-success?session_id={CHECKOUT_SESSION_ID}",
-    cancel_url: 'http://localhost:5000/cancel',
+    success_url: `http://localhost:${process.env.PORT}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `http://localhost:${process.env.PORT}/cancel`,
   });
   res.redirect(303, session.url);
   }catch (error) {
@@ -122,8 +169,8 @@ router.post("/create-stripe-session", async (req, res) => {
       ],
       mode: "payment",
       success_url:
-        "http://localhost:5000/payment-success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "http://localhost:5000/cancel",
+        `http://localhost:${process.env.PORT}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `http://localhost:${process.env.PORT}/cancel`,
     });
 
     res.redirect(303, session.url);
@@ -217,7 +264,7 @@ router.all("/payment-success", async (req, res) => {
       if (!Array.isArray(user.processedSessions)) user.processedSessions = [];
 
       if (!user.processedSessions.includes(txnId)) {
-        if (req.session.user.userType==="editor") {
+        if ((sessionUser && sessionUser.userType === "editor") || user.userType === "editor") {
           user.hasPaid = true;
           user.blogLimit = (user.blogLimit || 0) + 100;
           user.orders.push({
@@ -522,9 +569,9 @@ router.post("/create-phonepe-order", async (req, res) => {
       merchantTransactionId,
       merchantUserId: user?._id || "guest",
       amount,
-      redirectUrl: `http://localhost:5000/payment-success?gateway=phonepe&userId=${user?._id || "guest"}`,
+      redirectUrl: `http://localhost:${process.env.PORT}/payment-success?gateway=phonepe&userId=${user?._id || "guest"}`,
       redirectMode: "GET",
-      callbackUrl: "http://localhost:5000/payment-callback",
+      callbackUrl: `http://localhost:${process.env.PORT}/payment-callback`,
       paymentInstrument: { type: "PAY_PAGE" }
     };
 
@@ -574,42 +621,30 @@ router.get("/order-history", async (req, res) => {
   });
 }); 
 
-//pagination+Main page
-router.get('', async (req, res) => {
+//pagination + Main page + search
+router.get("/", async (req, res) => {
   try {
-    const locals = {
-      title: "NodeJs Blog",
-      description: "Simple Blog created with NodeJs, Express & MongoDb."
-    };
-    let perPage = 6;
-    let page = parseInt(req.query.page) || 1;
-    let query = { status: "approved" };
-    if (!req.session.user || !req.session.user.hasProAccess) {
-      query.isProBlog = { $ne: true }; 
+    if (!req.session.user) {
+      return renderMainPage(req, res, null);
     }
-    const data = await Post.find(query)
-      .sort({ createdAt: -1 })
-      .skip(perPage * (page - 1))
-      .limit(perPage)
-      .exec();
 
-    const count = await Post.countDocuments(query);
-    const totalPages = Math.ceil(count / perPage);
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const user = req.session.user;
 
-    res.render('index', {
-      locals,
-      data,
-      current: page,
-      totalPages,
-      pages,
-      currentRoute: '/',
-      user: req.session.user
-    });
+    if (user.isAdmin) {
+      return res.redirect("/admin-dashboard");
+    }
+
+    if (user.userType === "editor") {
+      return res.redirect("/editor-dashboard");
+    }
+
+    return renderMainPage(req, res, user);
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("Server Error");
   }
 });
+
 
 // router.get('/editor', async (req, res) => {
 //   try {
@@ -690,34 +725,54 @@ router.get('/editor/post/:id',checkEditor, async (req, res) => {
   }
 });
 
-router.post('/search', async (req, res) => {
-  try {
-    const locals = {
-      title: "Seach",
-      description: "Simple Blog created with NodeJs, Express & MongoDb."
-    }
+// router.get('/search', async (req, res) => {
+//   try {
+//     const locals = {
+//       title: "Search Results",
+//       description: "Simple Blog created with NodeJs, Express & MongoDb."
+//     };
 
-    let searchTerm = req.body.searchTerm;
-    const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "")
+//     let perPage = 6;
+//     let page = parseInt(req.query.page) || 1;
+//     let searchTerm = req.query.term || "";
+//     const searchNoSpecialChar = searchTerm.replace(/[^a-zA-Z0-9 ]/g, "");
 
-    const data = await Post.find({
-      $or: [
-        { title: { $regex: new RegExp(searchNoSpecialChar, 'i') }},
-        { body: { $regex: new RegExp(searchNoSpecialChar, 'i') }}
-      ]
-    });
+//     // Define query once so we can reuse
+//     const query = {
+//       $or: [
+//         { title: { $regex: new RegExp(searchNoSpecialChar, "i") } },
+//         { body: { $regex: new RegExp(searchNoSpecialChar, "i") } }
+//       ]
+//     };
 
-    res.render("search", { 
-      data,
-      locals,
-      currentRoute: '/'
-    });
+//     const data = await Post.find(query)
+//       .sort({ createdAt: -1 })
+//       .skip(perPage * (page - 1))
+//       .limit(perPage)
+//       .exec();
 
-  } catch (error) {
-    console.log(error);
-  }
+//     const count = await Post.countDocuments(query);
 
-});
+//     const totalPages = Math.ceil(count / perPage);
+//     const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+//     res.render("index", {
+//       data,
+//       locals,
+//       searchTerm,
+//       current: page,
+//       totalPages,
+//       pages,
+//       currentRoute: "/search"
+//     });
+//   } catch (error) {
+//     console.error(error);
+//   }
+// });
+
+
+
+
 
 router.get("/about" , (req,res)=>{
     res.render('about',{
@@ -738,7 +793,10 @@ router.get("/profile",async (req,res)=>{
 const user = await User.findById(req.session.user._id)
   .select("firstname lastname email userType blogLimit blogsPosted")
   .lean();
-  res.render("profile.ejs",{user});
+  res.render("profile.ejs",{
+    user,
+    success:req.query.success,
+    error:req.query.error,});
 });
 
 router.get("/edit-profile",async (req,res)=>{
@@ -765,7 +823,7 @@ router.post("/edit-profile", async (req, res) => {
         console.error("Session save error:", err);
         return res.status(500).send("Profile update failed, try again.");
       }
-      res.redirect("/profile");
+      res.redirect("/profile?success=status");
     });
   } catch (error) {
     console.log(error);
@@ -775,39 +833,51 @@ router.post("/edit-profile", async (req, res) => {
 
 
 router.get("/signup",(req,res)=>{
-  res.render("signup.ejs" , {data:{}});
+  res.render("signup.ejs" , {data:{},
+  error: null });
 });
 
 router.post("/signup", async (req, res) => {
   try {
-    const { firstname, lastname, email, password ,userType} = req.body;
+    const { firstname, lastname, email, password, userType } = req.body;
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    try {
-      const user = await User.create({ firstname, lastname, email, password: hashedPassword,userType });
-      req.session.user = {
-        _id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-        userType: userType || "reader"
-      };
-      res.redirect("/login?success=true");
-    } catch (error) {
-      if (error.code === 11000) {
-        return res.status(409).json({ message: 'Username or Email already in use' });
-      }
-      return res.status(500).json({ message: 'Internal error' });
-    }
+
+    const user = await User.create({
+      firstname,
+      lastname,
+      email,
+      password: hashedPassword,
+      userType
+    });
+
+    // store session
+    req.session.user = {
+      _id: user._id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      userType: user.userType || "reader"
+    };
+
+    res.redirect("/login?success=registered");
+
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Internal error' });
+    console.error(error);
+
+    if (error.code === 11000) {
+
+      return res.render("signup", { error: "Email already in use" ,data: req.body});
+    }
+
+    return res.render("signup", { error: "Internal error, please try again",data: req.body });
   }
 });
 
-
 router.get("/login",(req,res)=>{
   res.render("login.ejs",{
-    success:req.query.success
+    success:req.query.success,
+    error:req.query.error,
   });
 });
 
@@ -837,6 +907,7 @@ router.post("/login", async (req, res) => {
       email: user.email,
       userType:user.userType,
       hasProAccess:user.hasProAccess,
+      isAdmin:user.isAdmin,
     };
     
     req.session.save((err) => {
@@ -912,8 +983,8 @@ router.get('/editor',checkEditor, async (req, res) => {
     }
 
     const userId = req.session.user._id;
-    const perPage = 6;
-    const page = parseInt(req.query.page) || 1;
+    let perPage = 6;
+    let page = parseInt(req.query.page) || 1;
 
     const posts = await Post.find({ author: userId })
       .sort({ createdAt: -1 })
@@ -922,9 +993,8 @@ router.get('/editor',checkEditor, async (req, res) => {
       .exec();
 
     const count = await Post.countDocuments({ author: userId });
-        const totalPages = Math.ceil(count / perPage);
-        const nextPage = page < totalPages ? page + 1 : null;
-        const prevPage = page > 1 ? page - 1 : null;  
+    const totalPages = Math.ceil(count / perPage);
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);  
 
     // const nextPage = parseInt(page) + 1;
     // const hasNextPage = nextPage <= Math.ceil(count / perPage);
@@ -932,11 +1002,12 @@ router.get('/editor',checkEditor, async (req, res) => {
     res.render('editor', {
       data: posts,
       current: page,
-      nextPage,
-      prevPage,
       totalPages,
+      pages,
       currentRoute: '/',
-      layout: editorLayout
+      layout: editorLayout,
+      success:req.query.success,
+      error:req.query.error
     });
   } catch (error) {
     console.error(error);
@@ -976,7 +1047,7 @@ router.put('/editor-edit-post/:id', upload.single('image'), async (req, res) => 
       updateData.image = `/uploads/${req.file.filename}`;
     }
     await Post.findByIdAndUpdate(req.params.id, updateData);
-    res.redirect('/editor');
+    res.redirect('/editor?success=status');
   } catch (err) {
     console.error(err);
   }
@@ -996,7 +1067,7 @@ router.delete('/editor-delete-post/:id', async (req, res) => {
 router.get('/download/:id', async (req, res)=>{
   try {
     let blogId = req.params.id;
-    const blogUrl = `http://localhost:5000/post/${blogId}`;
+    const blogUrl = `http://localhost:${process.env.PORT}/post/${blogId}`;
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.goto(blogUrl, { waitUntil: 'networkidle0' });

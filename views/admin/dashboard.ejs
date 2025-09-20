@@ -129,13 +129,55 @@
             <span class="circle status <%= post.status %>"><%= post.status %></span>
             <a href="/edit-post/<%= post._id %>" class="btn btn-primary">Update</a>
             <form action="/delete-post/<%= post._id %>?_method=DELETE" method="POST" style="display:inline;">
-              <input type="submit" value="Delete" class="btn btn-delete">
+              <input type="submit" value="Delete" class="btn btn-delete" onclick="return confirm('⚠️ Are you sure you want to delete?');">
             </form>
           </div>
         </li>
       <% }); %>
     </ul>
+    <%if (typeof success !== 'undefined' && success === 'status'){%>
+      <div class="alert alert-success alert-dismissible fade show text-center position-fixed top-0 start-50 translate-middle-x mt-3 w-50 shadow" role="alert">
+      ✅ Status updated successfully!
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <%}%>
+    <% if (typeof error !== 'undefined') { %>
+  <div class="alert alert-danger alert-dismissible fade show text-center " role="alert">
+    ❌ Something went wrong. Please try again.
   </div>
+   <% } %>
+  </div>
+<div class="pagination-wrapper">
+  <ul class="pagination">
+    <% if (current > 1) { %>
+      <li>
+        <a class="page-link" href="/dashboard/?page=<%= current - 1 %>">&laquo; Prev</a>
+      </li>
+    <% } %>
+
+    <% pages.forEach(p => { %>
+      <li class="<%= p === current ? 'active' : '' %>">
+        <a class="page-link" href="/dashboard/?page=<%= p %>"><%= p %></a>
+      </li>
+    <% }) %>
+
+    <% if (current < totalPages) { %>
+      <li>
+        <a class="page-link" href="/dashboard/?page=<%= current + 1 %>">Next &raquo;</a>
+      </li>
+    <% } %>
+  </ul>
+</div>
+<script>
+  setTimeout(() => {
+    const alertEl = document.querySelector('.alert');
+    if (alertEl) {
+      const bsAlert = new bootstrap.Alert(alertEl);
+      bsAlert.close();
+    }
+  }, 2000);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

@@ -8,6 +8,7 @@ require("dotenv").config();
 const multer = require("multer");
 const path = require("path");
 const cookieParser = require("cookie-parser");
+const fs = require("fs");
 
 router.use(cookieParser());
 
@@ -123,21 +124,34 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       title: 'Dashboard',
       description: 'Simple Blog created with NodeJs, Express & MongoDb.'
     }
+    let perPage = 10;
+    let page = parseInt(req.query.page) || 1;
 
     const data = await Post.find()
     .sort({ createdAt: -1 })
+    .skip(perPage * (page - 1))
+    .limit(perPage)
     .exec();
+    
+    const count = await Post.countDocuments();
+    const totalPages = Math.ceil(count / perPage);
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
     if(req.user.isAdmin) {
     res.render('admin/dashboard', {
       locals,
       data,
-      layout: adminLayout
+      current: page,
+      totalPages,
+      pages,
+      layout: adminLayout,
+      success:req.query.success,
+      error:req.query.error,
     });
   }
   } catch (error) {
     console.log(error);
   }
-
 });
 
 router.get('/add-post', authMiddleware, async (req, res) => {
@@ -194,7 +208,8 @@ router.get('/edit-post/:id', authMiddleware, async (req, res) => {
     res.render('admin/edit-post', {
       locals,
       data,
-      layout: adminLayout
+      layout: adminLayout,
+      
     })
 
   } catch (error) {
@@ -215,23 +230,44 @@ router.put('/edit-post/:id', authMiddleware, async (req, res) => {
       updatedAt: Date.now()
     });
 
-    res.redirect(`/dashboard`);
+    res.redirect(`/dashboard?success=status`);
 
   } catch (error) {
     console.log(error);
+    res.redirect(`/dashboard?error=true`);
   }
 
 });
 
 router.delete('/delete-post/:id', authMiddleware, async (req, res) => {
-
   try {
-    await Post.deleteOne( { _id: req.params.id } );
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).send("Post not found");
+    }
+    if (post.image) {
+      const images = Array.isArray(post.image)?post.image:[post.image];
+
+      for (const img of images) {
+        const fileName = img.replace(/^\/?uploads\//, "");
+        const imagePath = path.join(__dirname, "../../uploads", fileName);
+        try {
+          await fs.promises.unlink(imagePath);
+        } catch (err) {
+          console.error("Failed to delete image:", img, err);
+        }
+      }
+    }
+
+    // Delete the post from the database
+    await Post.deleteOne({ _id: req.params.id });
+
     res.redirect('/dashboard');
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).send("Server error");
   }
-
 });
 
 router.get("/logout", (req, res) => {

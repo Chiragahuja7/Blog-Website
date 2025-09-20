@@ -18,6 +18,9 @@
       <% if (!user.hasProAccess) { %>
         <a href="/checkout" class=" btn-success me-2 text-decoration-none">💳 Pro Access</a>
       <% } %>
+      <span class="badge <%= user.hasProAccess ? 'bg-success' : '' %>">
+                  <%= user.hasProAccess ? '⭐Pro  ' : '' %>
+      </span>
       <a href="/logout" class=" btn-danger"
          onclick="return confirm('⚠️ Are you sure you want to log out?');">
          <img src="/icons8-power-button-64.png" alt="logout">
@@ -80,26 +83,17 @@
 </div>
 
 <div class="pagination-wrapper">
-  <ul class="pagination">
-    <% if (current > 1) { %>
-      <li>
-        <a class="page-link" href="/?page=<%= current - 1 %>">&laquo; Prev</a>
-      </li>
-    <% } %>
-
-    <% pages.forEach(p => { %>
-      <li class="<%= p === current ? 'active' : '' %>">
-        <a class="page-link" href="/?page=<%= p %>"><%= p %></a>
-      </li>
-    <% }) %>
-
-    <% if (current < totalPages) { %>
-      <li>
-        <a class="page-link" href="/?page=<%= current + 1 %>">Next &raquo;</a>
-      </li>
-    <% } %>
-  </ul>
+  <% if (totalPages > 1) { %>
+    <%- include("partials/pagination", {
+      current: current,
+      totalPages: totalPages,
+      pages: pages,
+      searchTerm: typeof searchTerm !== "undefined" ? searchTerm : "",
+      currentRoute: typeof currentRoute !== "undefined" ? currentRoute : "/"
+    }) %>
+  <% } %>
 </div>
+
 </section>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
